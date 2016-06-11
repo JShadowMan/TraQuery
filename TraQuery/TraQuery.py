@@ -92,10 +92,10 @@ class TraQuery(object):
             else:
                 raise Exception('Require SSL Module')
 
-            if handler.getcode() == 200:
-                return (handler.read()).decode('utf-8')
-            else:
-                raise Exception('Request Error Occurs')
+        if handler.getcode() == 200:
+            return (handler.read()).decode('utf8')
+        else:
+            raise Exception('Request Error Occurs')
 
     def __parseResult(self, contents, date, erType):
         contents = json.loads(contents)
