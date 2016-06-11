@@ -1,33 +1,49 @@
 # -*- coding: UTF-8 -*-
 '''
-Created on 2016年6月10日
+Created on 06/10/2016
 
 @author: ShadowMan
+@license: MIT License
+@version: 1.0.0
 '''
+
 import urllib2, re
-import ssl
 
+# Check SSL
+try:
+    import ssl
+except ImportError:
+    _have_ssl = False
+else:
+    _have_ssl = True
+
+_base_url = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version='
+
+# Getting Train Station List From 12306
 class TraStationList(object):
-    '''
-    China train Station List
-    '''
 
-    def __init__(self):
+    def __init__(self, stationVersion = '1.8954'):
         self.__stationList = {}
-        self.__initTraStationList__()
+        self.__initTraStationList(stationVersion)
 
-    def __initTraStationList__(self):
-        context = ssl._create_unverified_context()
-        handler = urllib2.urlopen('https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version=1.8954',  context = context)
+    def __initTraStationList(self, stationVersion):
+        try:
+            handler = urllib2.urlopen(_base_url + stationVersion)
+        except urllib2.URLError:
+            if _have_ssl == True:
+                context = ssl._create_unverified_context()
+                handler = urllib2.urlopen(_base_url + stationVersion,  context = context)
+            else:
+                raise Exception('Require SSL Module')
 
         if handler.getcode() == 200:
             stationList = handler.read()
         else:
             raise Exception("Get Request Error Occurs.")
 
-        self.__parseStation__(stationList)
+        self.__parseStation(stationList)
 
-    def __parseStation__(self, stationList):
+    def __parseStation(self, stationList):
         stationList = stationList.decode('utf-8')
         stationList = stationList.replace('  ', '') # f**k 12306
         stationList = re.findall('([^@a-z|,;\'(\d+)_= ]+)', stationList)
@@ -43,6 +59,6 @@ class TraStationList(object):
     def get(self, station):
         if type(station) == type(''):
             station = station.decode('utf-8')
-            
+
         if (station in self.__stationList):
             return self.__stationList[station]
