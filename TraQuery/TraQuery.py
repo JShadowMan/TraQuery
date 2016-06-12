@@ -19,6 +19,15 @@ else:
 ERTYPE_ADULT   = 'ADULT'
 ERTYPE_STUDENT = '0X00'
 
+
+def adult(fromStation, toStation, date):
+    return 'ABS'
+
+def student(fromStation, toStation, date):
+    pass
+
+    
+
 class TraQuery(object):
     traStationList = TSList.TraStationList()
 
@@ -34,8 +43,12 @@ class TraQuery(object):
     def adult(self, fromStation, toStation, date):
         self.__go(fromStation, toStation, date, ERTYPE_ADULT)
 
+        return TraResult(self.__result)
+
     def student(self, fromStation, toStation, date):
         self.__go(fromStation, toStation, date, ERTYPE_STUDENT)
+
+        return TraResult(self.__result)
 
     def __go(self, fromStation, toStation, date, erType = ERTYPE_ADULT):
         fromStation = self.traStationList.get(fromStation)
@@ -115,7 +128,7 @@ class TraQuery(object):
                 'purchase': trainInfo['canWebBuy'] == 'Y',
                 'time': { 'start': trainInfo['start_time'], 'end': trainInfo['arrive_time'], 'total': trainInfo['lishi'] },
                 'price': self.__getPrice(trainInfo['train_no'], trainInfo['from_station_no'], trainInfo['to_station_no'], trainInfo['seat_types'], date),
-                'stack': self.__getStack(stackCnt)
+                'stack': self.__getStack(stackCnt, trainInfo['train_no'])
             })
         print self.__result
 
@@ -134,15 +147,20 @@ class TraQuery(object):
                 'cushionedBerth': self.__fromListGet(contents, 'A4'), # 硬卧
             }
 
-    def __getStack(self, contents):
-        return {'first': self.__fromListGet(contents, 'swz_num'), # 商务
-                'business': self.__fromListGet(contents, 'zy_num'), # 一等座
-                'economy': self.__fromListGet(contents, 'ze_num'), # 二等座
-                'none': self.__fromListGet(contents, 'wz_num'), # 无座
-                'hardSeat': self.__fromListGet(contents, 'yz_num'), # 硬座
-                'softSeat': self.__fromListGet(contents, 'rz_num'), # 软座
-                'semiCushionedBerth': self.__fromListGet(contents, 'yw_num'), # 硬卧
-                'cushionedBerth': self.__fromListGet(contents, 'rw_num'), # 软卧
+    def __getStack(self, contents, stationNo):
+        station = None
+        for train in contents:
+            if train['train_no'] == stationNo:
+                station = train
+                break
+        return {'first': self.__fromListGet(station, 'swz_num'), # 商务
+                'business': self.__fromListGet(station, 'zy_num'), # 一等座
+                'economy': self.__fromListGet(station, 'ze_num'), # 二等座
+                'none': self.__fromListGet(station, 'wz_num'), # 无座
+                'hardSeat': self.__fromListGet(station, 'yz_num'), # 硬座
+                'softSeat': self.__fromListGet(station, 'rz_num'), # 软座
+                'semiCushionedBerth': self.__fromListGet(station, 'yw_num'), # 硬卧
+                'cushionedBerth': self.__fromListGet(station, 'rw_num'), # 软卧
             }
 
 
@@ -155,13 +173,6 @@ class TraQuery(object):
 
 class TraResult(object):
     
-    def __init__(self):
-        pass
+    def __init__(self, result):
+        self.__result = result
 
-
-
-if __name__ == '__main__':
-    train = TraQuery()
-    
-    train.adult('福鼎', '上海虹桥', '2016:06:12')
-    
