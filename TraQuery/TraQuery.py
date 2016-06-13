@@ -42,9 +42,6 @@ class QueryError(IOError):
 
     def __str__(self):
         return '<TraQuery Exception %s:%s>' % ( self.reason, self.code )
-    
-    def code(self):
-        return self.code
 
 # Getting Train Station List From 12306
 class TraStationList(object):
@@ -194,7 +191,7 @@ class TraQuery(object):
                 'hardSeat': self.__fromListGet(contents, 'A1'), # 硬座
                 'softSeat': self.__fromListGet(contents, 'A2'), # 软座
                 'semiCushionedBerth': self.__fromListGet(contents, 'A3'), # 硬卧
-                'cushionedBerth': self.__fromListGet(contents, 'A4'), # 硬卧
+                'cushionedBerth': self.__fromListGet(contents, 'A4'), # 软卧
             }
 
     def __getStack(self, contents, stationNo):

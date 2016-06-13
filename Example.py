@@ -7,11 +7,9 @@ Created on 2016年6月10日
 
 import TraQuery.TraQuery as TraQuery
 
-march = TraQuery.adult('福州', '北京', '2016/07/08')
+march = TraQuery.adult('福州', '北京', '2016/06/15')
 
-print march.trainCount()
-
-print march.trainCodes()
+print "Train List", march.trainCodes(), "Total:", march.trainCount()
 
 for trainCode in march.trainCodes():
     print trainCode, march.selectTrainClass(trainCode), march.SelectSeat(trainCode), march.purchaseFlag(trainCode)
