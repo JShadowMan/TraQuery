@@ -41,7 +41,7 @@ class QueryError(IOError):
         self.code   = code
 
     def __str__(self):
-        return '<TraQuery Exception %s:%s>' % ( self.reason, self.code )
+        return '<TraQuery Exception %s>' % ( self.reason )
 
 # Getting Train Station List From 12306
 class TraStationList(object):
@@ -122,7 +122,7 @@ class TraQuery(object):
         else:
             raise QueryError('Date Format Error Occurs')
 
-        if time.mktime(date) < time.time():
+        if time.mktime(date) < time.time() and time.mktime(date) < time.time() - (time.time() % 86400) - 8 * 3600:
             raise QueryError('Date Error Occurs')
 
         return time.strftime('%Y-%m-%d', date)
@@ -155,11 +155,13 @@ class TraQuery(object):
     def __parseResult(self, contents, date, erType):
         contents = json.loads(contents)
 
-        stackContent = self.__sendRequest(self.__queryStackUrl % ( erType, date, contents['data'][0]['queryLeftNewDTO']['from_station_telecode'], contents['data'][0]['queryLeftNewDTO']['end_station_telecode'] ))
+        self.__result['trainCount'] = len(contents['data'])
+        if len(contents['data']) == 0:
+            raise QueryError('Not Train Data')
+
+        stackContent = self.__sendRequest(self.__queryStackUrl % ( erType, date, contents['data'][0]['queryLeftNewDTO']['from_station_telecode'], contents['data'][0]['queryLeftNewDTO']['to_station_telecode'] ))
         stackContent = json.loads(stackContent)
         stackContent = stackContent['data']['datas']
-
-        self.__result['trainCount'] = len(contents['data'])
 
         for train in contents['data']:
             trainInfo = train['queryLeftNewDTO']
@@ -195,20 +197,20 @@ class TraQuery(object):
             }
 
     def __getStack(self, contents, stationNo):
-        station = None
+        train = None
         for trainCode in contents:
             if trainCode['train_no'] == stationNo:
-                station = trainCode
+                train = trainCode
                 break
 
-        return {'first': self.__fromListGet(station, 'swz_num'), # 商务
-                'business': self.__fromListGet(station, 'zy_num'), # 一等座
-                'economy': self.__fromListGet(station, 'ze_num'), # 二等座
-                'none': self.__fromListGet(station, 'wz_num'), # 无座
-                'hardSeat': self.__fromListGet(station, 'yz_num'), # 硬座
-                'softSeat': self.__fromListGet(station, 'rz_num'), # 软座
-                'semiCushionedBerth': self.__fromListGet(station, 'yw_num'), # 硬卧
-                'cushionedBerth': self.__fromListGet(station, 'rw_num'), # 软卧
+        return {'first': self.__fromListGet(train, 'swz_num'), # 商务
+                'business': self.__fromListGet(train, 'zy_num'), # 一等座
+                'economy': self.__fromListGet(train, 'ze_num'), # 二等座
+                'none': self.__fromListGet(train, 'wz_num'), # 无座
+                'hardSeat': self.__fromListGet(train, 'yz_num'), # 硬座
+                'softSeat': self.__fromListGet(train, 'rz_num'), # 软座
+                'semiCushionedBerth': self.__fromListGet(train, 'yw_num'), # 硬卧
+                'cushionedBerth': self.__fromListGet(train, 'rw_num'), # 软卧
             }
 
     def __fromListGet(self, lst, key):
@@ -247,7 +249,7 @@ class TraResult(object):
         seats = {}
         if code in self.__result['trains']:
             for seat in self.__result['trains'][code]['stack']:
-                seats[seat] = { 'seat': self.__result['trains'][code]['stack'][seat], 'price': self.__result['trains'][code]['price'][seat] }
+                seats[seat] = { 'count': self.__result['trains'][code]['stack'][seat], 'price': self.__result['trains'][code]['price'][seat] }
         else:
             raise QueryError('TrainCode Not Exists')
 
@@ -260,7 +262,7 @@ class TraResult(object):
         invalidIndex = []
 
         for index in dic:
-            if dic[index]['seat'] == None and dic[index]['price'] == None:
+            if dic[index]['count'] == None and dic[index]['price'] == None:
                 invalidIndex.append(index)
 
         for index in invalidIndex:
