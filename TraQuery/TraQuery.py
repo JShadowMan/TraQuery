@@ -4,8 +4,11 @@
 '''This Package Provides Train Query
 
 Object Type:
+    TraError ---
 
     TraQuery ---
+
+    TraSelect ---
 
     TraResult ---
 
@@ -44,8 +47,8 @@ SEAT_RW  = 'cushionedBerth'     # 软卧
 SEAT_YW  = 'semiCushionedBerth' # 硬卧 
 SEAT_RZ  = 'softSeat'           # 软座
 SEAT_YZ  = 'hardSeat'           # 硬座
+SEAT_GR  = 'advancedSoft'       # 高级软卧
 
-__seatTypes = [ SEAT_SWZ, SEAT_YDZ, SEAT_EDZ, SEAT_WZ, SEAT_RW, SEAT_YW, SEAT_RZ, SEAT_YZ, ]
 
 class QueryError(IOError):
     def __init__(self, reason, code = 0):
@@ -98,14 +101,11 @@ class TraStationList(object):
             return self.__stationList[station]
         else:
             raise QueryError('Station Not Exists')
-
 traStationList = TraStationList()
 class TraQuery(object):
     # Private Members
     __queryTrainUrl = 'https://kyfw.12306.cn/otn/leftTicket/query?leftTicketDTO.train_date=%s&leftTicketDTO.from_station=%s&leftTicketDTO.to_station=%s&purpose_codes=%s'
-    __queryPriceUrl = 'https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice?train_no=%s&from_station_no=%s&to_station_no=%s&seat_types=%s&train_date=%s'
     __queryStackUrl = 'https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes=%s&queryDate=%s&from_station=%s&to_station=%s'
-    __queryStations = 'https://kyfw.12306.cn/otn/czxx/queryByTrainNo?train_no=%s&from_station_telecode=%s&to_station_telecode=%s&depart_date=%s'
 
     def __init__(self):
         self.__result = { 'trainCount': None, 'trains': {} }
@@ -171,6 +171,8 @@ class TraQuery(object):
         self.__result['trainCount'] = len(contents['data'])
         if len(contents['data']) == 0:
             raise QueryError('Not Train Data')
+        self.__result['erType'] = erType
+        self.__result['date'] = date
 
         stackContent = self.__sendRequest(self.__queryStackUrl % ( erType, date, contents['data'][0]['queryLeftNewDTO']['from_station_telecode'], contents['data'][0]['queryLeftNewDTO']['to_station_telecode'] ))
         stackContent = json.loads(stackContent)
@@ -183,32 +185,19 @@ class TraQuery(object):
                 # Train Information
                 'train': { 'code': trainInfo['station_train_code'], 'class': trainInfo['station_train_code'][0], 'no': trainInfo['train_no'] },
                 # Station Information
-                'station': { 'from': trainInfo['from_station_name'], 'to': trainInfo['end_station_name'], 'fromNo': trainInfo['from_station_no'], 'toNo': trainInfo['to_station_no'] },
+                'station': { 'from': trainInfo['from_station_name'], 'to': trainInfo['end_station_name'], 'fromNo': trainInfo['from_station_no'], 'fromCode': trainInfo['from_station_telecode'], 'toCode': trainInfo['to_station_telecode'], 'toNo': trainInfo['to_station_no'] },
                 # Could Purchase Flag
                 'purchase': trainInfo['canWebBuy'] == 'Y',
                 # Time Information
                 'time': { 'start': trainInfo['start_time'], 'end': trainInfo['arrive_time'], 'total': trainInfo['lishi'] },
                 # Seat Price
-                'price': self.__getPrice(trainInfo['train_no'], trainInfo['from_station_no'], trainInfo['to_station_no'], trainInfo['seat_types'], date),
+                'price': {},
                 # Stack Count
                 'stack': self.__getStack(stackContent, trainInfo['train_no']),
                 # All Station
-                'allStation': self.__getStations(trainInfo['train_no'], date, trainInfo['from_station_telecode'], trainInfo['to_station_telecode'])
-            }
-
-    def __getPrice(self, no, fromStationNo, toStationNo, seatTypes, date):
-        contents = self.__sendRequest(self.__queryPriceUrl % ( no, fromStationNo, toStationNo, seatTypes, date ))
-        contents = json.loads(contents)
-        contents = contents['data']
-
-        return {'first': self.__fromListGet(contents, 'A9'), # 商务
-                'business': self.__fromListGet(contents, 'M'), # 一等座
-                'economy': self.__fromListGet(contents, 'O'), # 二等座
-                'none': self.__fromListGet(contents, 'WZ'), # 无座
-                'hardSeat': self.__fromListGet(contents, 'A1'), # 硬座
-                'softSeat': self.__fromListGet(contents, 'A2'), # 软座
-                'semiCushionedBerth': self.__fromListGet(contents, 'A3'), # 硬卧
-                'cushionedBerth': self.__fromListGet(contents, 'A4'), # 软卧
+                'allStation': {},
+                # Seat Type
+                'seatType': trainInfo['seat_types']
             }
 
     def __getStack(self, contents, stationNo):
@@ -226,10 +215,40 @@ class TraQuery(object):
                 'softSeat': self.__fromListGet(train, 'rz_num'), # 软座
                 'semiCushionedBerth': self.__fromListGet(train, 'yw_num'), # 硬卧
                 'cushionedBerth': self.__fromListGet(train, 'rw_num'), # 软卧
+                'advancedSoft': self.__fromListGet(train, 'gr_num') # 高级软卧
             }
-    def __getStations(self, stationNo, date, fromStationCode, toStationCode):
-        contents = self.__sendRequest(self.__queryStations % ( stationNo, fromStationCode, toStationCode, date ))
-        contents = json.loads(contents)
+
+    def __fromListGet(self, lst, key):
+        if key in lst:
+            if lst[key] == u'--' or lst[key] == u'无':
+                return None
+
+            return lst[key]
+        else:
+            return None
+
+class TraSelect(object):
+    # Private: Select URL
+    __queryPriceUrl = 'https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice?train_no=%s&from_station_no=%s&to_station_no=%s&seat_types=%s&train_date=%s'
+    __queryStations = 'https://kyfw.12306.cn/otn/czxx/queryByTrainNo?train_no=%s&from_station_telecode=%s&to_station_telecode=%s&depart_date=%s'
+
+    def selectPrice(self, trainNo, fromStationNo, toStationNo, seatTypes, date):
+        contents = self.__getContents(self.__queryPriceUrl % ( trainNo, fromStationNo, toStationNo, seatTypes, date ))
+        contents = contents['data']
+
+        return {'first': self.__fromListGet(contents, 'A9'), # 商务
+                'business': self.__fromListGet(contents, 'M'), # 一等座
+                'economy': self.__fromListGet(contents, 'O'), # 二等座
+                'none': self.__fromListGet(contents, 'WZ'), # 无座
+                'hardSeat': self.__fromListGet(contents, 'A1'), # 硬座
+                'softSeat': self.__fromListGet(contents, 'A2'), # 软座
+                'semiCushionedBerth': self.__fromListGet(contents, 'A3'), # 硬卧
+                'cushionedBerth': self.__fromListGet(contents, 'A4'), # 软卧
+                'advancedSoft': self.__fromListGet(contents, 'A6') # 高级软卧
+            }
+
+    def selectStations(self, stationNo, date, fromStationCode, toStationCode):
+        contents = self.__getContents(self.__queryStations % ( stationNo, fromStationCode, toStationCode, date ))
         contents = contents['data']['data']
         result   = []
 
@@ -246,6 +265,20 @@ class TraQuery(object):
 
         return result
 
+    def __getContents(self, url):
+        try:
+            handler = urllib2.urlopen(url)
+        except urllib2.URLError:
+            if _have_ssl == True and '_create_unverified_context' in dir(ssl):
+                handler = urllib2.urlopen(url,  context = ssl._create_unverified_context())
+            else:
+                raise QueryError('Require SSL Module')
+
+        if handler.getcode() == 200:
+            return json.loads(handler.read().decode('utf-8'))
+        else:
+            raise QueryError('Request Error Occurs')
+
     def __fromListGet(self, lst, key):
         if key in lst:
             if lst[key] == u'--' or lst[key] == u'无':
@@ -255,6 +288,7 @@ class TraQuery(object):
         else:
             return None
 
+traSelect = TraSelect()
 class TraResult(object):
 
     def __init__(self, result):
@@ -281,6 +315,8 @@ class TraResult(object):
     def SelectSeat(self, trainCode):
         seats = {}
         if trainCode in self.__result['trains']:
+            self.__checkPrice(trainCode)
+
             for seat in self.__result['trains'][trainCode]['stack']:
                 seats[seat] = { 'count': self.__result['trains'][trainCode]['stack'][seat], 'price': self.__result['trains'][trainCode]['price'][seat] }
         else:
@@ -289,15 +325,17 @@ class TraResult(object):
         return self.__seatFilter(seats)
 
     def selectSeatPrice(self, trainCode, seatType):
-        if seatType not in __seatTypes:
+        if seatType not in [ SEAT_SWZ, SEAT_YDZ, SEAT_EDZ, SEAT_WZ, SEAT_RW, SEAT_YW, SEAT_RZ, SEAT_YZ, SEAT_GR ]:
             raise QueryError('Seat Type Non Exists')
         if trainCode not in self.__result['trains']:
             raise QueryError('TrainCode Non Exists')
 
+        self.__checkPrice(trainCode)
+
         return self.__result['trains'][trainCode]['price'][seatType]
 
     def selectSeatCount(self, trainCode, seatType):
-        if seatType not in __seatTypes:
+        if seatType not in [ SEAT_SWZ, SEAT_YDZ, SEAT_EDZ, SEAT_WZ, SEAT_RW, SEAT_YW, SEAT_RZ, SEAT_YZ, SEAT_GR ]:
             raise QueryError('Seat Type Non Exists')
         if trainCode not in self.__result['trains']:
             raise QueryError('TrainCode Non Exists')
@@ -307,10 +345,30 @@ class TraResult(object):
     def selectPassesStation(self, trainCode):
         if trainCode not in self.__result['trains']:
             raise QueryError('TrainCode Non Exists')
+        self.__checkAllStations(trainCode)
 
         startStationNo = int(self.__result['trains'][trainCode]['station']['fromNo']) - 1
         endStationNo   = int(self.__result['trains'][trainCode]['station']['toNo'])
         return self.__result['trains'][trainCode]['allStation'][startStationNo:endStationNo]
+
+    def __checkPrice(self, trainCode):
+        if len(self.__result['trains'][trainCode]['price']) == 0:
+                self.__result['trains'][trainCode]['price'] = traSelect.selectPrice(
+                    self.__result['trains'][trainCode]['train']['no'],
+                    self.__result['trains'][trainCode]['station']['fromNo'],
+                    self.__result['trains'][trainCode]['station']['toNo'],
+                    self.__result['trains'][trainCode]['seatType'],
+                    self.__result['date']
+                )
+    
+    def __checkAllStations(self, trainCode):
+        if len(self.__result['trains'][trainCode]['allStation']) == 0:
+            self.__result['trains'][trainCode]['allStation'] = traSelect.selectStations(
+                self.__result['trains'][trainCode]['train']['no'],
+                self.__result['date'],
+                self.__result['trains'][trainCode]['station']['fromCode'],
+                self.__result['trains'][trainCode]['station']['toCode']
+            )
 
     def __seatFilter(self, dic):
         invalidIndex = []
@@ -323,6 +381,7 @@ class TraResult(object):
             dic.pop(index)
 
         return dic
+
 
 
 traQuery = TraQuery()
