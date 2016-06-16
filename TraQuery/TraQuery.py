@@ -58,6 +58,9 @@ class QueryError(IOError):
     def __str__(self):
         return '<TraQuery Exception %s>' % ( self.reason )
 
+    def getMessage(self):
+        return self.reason
+
 # Getting Train Station List From 12306
 class TraStationList(object):
     _base_url = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version='
@@ -100,7 +103,7 @@ class TraStationList(object):
         if (station in self.__stationList):
             return self.__stationList[station]
         else:
-            raise QueryError('Station Not Exists')
+            raise QueryError('Station Non Exists')
 traStationList = TraStationList()
 class TraQuery(object):
     # Private Members
