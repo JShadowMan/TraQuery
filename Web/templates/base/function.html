@@ -1,0 +1,17 @@
+{% macro label(for, text='') -%}
+    <label class="widget-input-label" for="{{ for }}">{{ text }}</label>
+{%- endmacro %}
+
+{% macro input(name, value='', type='text', id=false, hidden=false, bind=false) -%}
+    <input type="{{ type }}" id="{% if id == false %}{{ name }}{% else %}{{ id }}{% endif %}" name="{{ name }}" value="{{ value }}" {% if hidden %}hidden="hidden"{% endif %} data-bind="{% if bind != false %}{{ bind }}{% endif %}">
+{%- endmacro %}
+
+{% macro button(text, style='default', disable=false, class='') -%}
+    <button class="widget-btn widget-btn-{{ style }} {{ class }}" {% if disable == true %}disable="disable"{% endif %}>{{ text }}</button>
+{%- endmacro %}
+
+{% macro inputGroup(name, labelText, value='', type='text', hidden=false, bind=false) %}
+    <div class="widget-input-group">
+        {{ label(name, labelText) }}{{ input(name, value, type, name, hidden, bind) }}
+    </div>
+{% endmacro %}

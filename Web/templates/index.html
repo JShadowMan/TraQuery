@@ -1,0 +1,33 @@
+{% extends "base/layout.html" %}
+
+## Title
+{% block title %}{{ options.title }}{% endblock %}
+
+## Javascript
+{% block javascript -%}
+    <script>
+        document.oncontextmenu = function() { return false }
+        document.onselectstart = function() { return false }
+    </script>
+{%- endblock %}
+
+## Header
+{% block header -%}
+    <article id="introduce" class="container">
+        <h1>Train Query Helper</h1>
+        <p>Distributed under the MIT License.<br/>
+        Implemented in Python. Written by ShadowMan(Wang).</p>
+    </article>
+{%- endblock %}
+
+## Contents
+{% block contents -%}
+    <form action="/index.html" method="POST" onsubmit="return false">
+        {{ function.inputGroup('fromStation', 'FROM STATION', bind='hFStation') }}
+        {{ function.input('fromStationCode', id='hFStation', hidden=true, bind='fromStation') }}
+        {{ function.inputGroup('toStation', 'TO STATION', bind='tFStation') }}
+        {{ function.input('toStationCode', id='tFStation', hidden=true, bind='toStation') }}
+        {{ function.inputGroup('date', 'DATE', type='date', bind='date') }}
+        {{ function.button('Submit', disable=true, class='widget-button-disable') }}
+    </form>
+{%- endblock contents -%}
