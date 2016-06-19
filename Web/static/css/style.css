@@ -76,10 +76,33 @@ html {
             box-sizing: border-box;
 }
 body {
+    height: 100vh;
     cursor: default;
     color: rgb(51, 51, 51);
     font-family: 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
     background-color: rgb(241, 241, 241);
+    border: 1px solid transparent;
+    margin: 0;
+}
+.widget-hidden {
+    display: none !important;
+}
+#loader-bar {
+    width: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    z-index: 99;
+    opacity: 0;
+    transition: all 0.4s linear 0.4s;
+}
+#loader-bar.is-loading {
+    opacity: 100;
+    height: .2rem !important;
+    background: #77b6ff;
+    box-shadow: 0 0 10px rgba(119,182,255,0.7);
+    transition: all .35s ease;
 }
 header {
     font-size: 2rem;
@@ -215,4 +238,15 @@ button {
 }
 #tra_contents {
     
+}
+
+
+
+#train-count {
+    text-align: center;
+    white-space: nowrap;
+    overflow: scroll;
+}
+.train-loaded {
+    color: #0F0;
 }

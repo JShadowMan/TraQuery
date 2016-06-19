@@ -104,6 +104,10 @@ class TraStationList(object):
             return self.__stationList[station]
         else:
             raise QueryError('Station Non Exists')
+
+    def contains(self, code):
+        return code in self.__stationList.values()
+
 traStationList = TraStationList()
 class TraQuery(object):
     # Private Members
@@ -115,8 +119,8 @@ class TraQuery(object):
 
     def letsGo(self, fromStation, toStation, date, erType = ERTYPE_ADULT):
         try:
-            fromStation = traStationList.code(fromStation)
-            toStation   = traStationList.code(toStation)
+            fromStation = fromStation if traStationList.contains(fromStation) else traStationList.code(fromStation)
+            toStation   = toStation if traStationList.contains(toStation) else traStationList.code(toStation)
             trainDate   = self.__parseDate(date)
             erType      = self.__parseErType(erType)
 
@@ -263,7 +267,7 @@ class TraSelect(object):
                 'startTime': station['start_time'],
                 'arriveTime': None if (station['arrive_time'] == u'----') else station['arrive_time'],
                 'stopover': stopover and stopover.group() or None,
-                'enable': station['isEnabled']
+                'pass': station['isEnabled']
             })
 
         return result

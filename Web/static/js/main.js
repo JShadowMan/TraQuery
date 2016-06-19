@@ -1,39 +1,115 @@
-document.addEventListener("DOMContentLoaded", function() {
+﻿document.addEventListener("DOMContentLoaded", function() {
+    window.socket = io.connect('http://' + document.domain + ':' + location.port + '/query')
+
     var fromStation = document.querySelector('#fromStation')
     var toStation   = document.querySelector('#toStation')
     var startDate   = document.querySelector('#date')
 
     fromStation.addEventListener('blur', blurEvent)
-    fromStation.addEventListener('focus', focusEvent)
-
     toStation.addEventListener('blur', blurEvent)
-    toStation.addEventListener('focus', focusEvent)
-
     startDate.addEventListener('blur', blurEvent)
+
+    fromStation.addEventListener('focus', focusEvent)
+    toStation.addEventListener('focus', focusEvent)
     startDate.addEventListener('focus', focusEvent)
+
+    /**
+     * SocketIO.Event <response.station.code>
+     * 
+     * Receive Station Code From Server
+     */
+    socket.on('response.station.code', function(responsed){
+        element = document.querySelector('#' + responsed.element)
+
+        if (responsed.code !== undefined && element) {
+            var bind = document.querySelector('#' + element.getAttribute('data-bind'))
+
+            if (typeof bind === 'object') {
+                bind.value = responsed.code
+            }
+        } else if (element == null) {
+            alert('System Error Occurs')
+        }
+    })
+
+    /**
+     * SocketIO.Event <response.train.count>
+     * 
+     * Receive And Display Train Count
+     */
+    socket.on('response.train.count', function(responsed) {
+        if (responsed.count != undefined) {
+            window.trainCount = parseInt(responsed.count)
+
+            progress(10)
+            document.querySelector('#train-count').innerHTML = 'Total Of ' + responsed.count + ' Train.'
+        }
+    })
+
+    /**
+     * SocketIO.Event <response.train.codes>
+     * 
+     * Receive And Display Train Codes
+     */
+    socket.on('response.train.codes', function(responsed) {
+        var trainList = document.querySelector('#train-count').innerHTML + ' [ '
+
+        for (index = 0; index < responsed.trains.length; ++index) {
+            id = parseInt(responsed.trains[index]) == responsed.trains[index] ? ('_' + responsed.trains[index]) : responsed.trains[index]
+            trainList += '<span id="' + id + '">' + responsed.trains[index] + '</span> '
+        }
+
+        document.querySelector('#train-count').innerHTML = trainList + ' ]'
+    })
+
+    socket.on('response.train.item', function(responsed) {
+        var code = parseInt(responsed.code) == responsed.code ? ('_' + responsed.code) : responsed.code
+
+        progress((80 / window.trainCount))
+        document.querySelector('#' + code).classList.add('train-loaded')
+    })
+
+    /**
+     * SocketIO.Event <response.error>
+     * 
+     * Error Handler
+     */
+    socket.on('response.error', function(responsed){
+        element = document.querySelector('#' + responsed.element)
+
+        if (responsed.error !== undefined && element) {
+            element.classList.add('widget-input-error')
+        }
+
+        console.log('Error: ' + (responsed.error ? responsed.error : '<>') + ' In ', responsed)
+    })
+
+    socket.on('response.error.nodata', function(responsed) {
+        progress(100, true)
+        document.querySelector('#train-count').innerHTML = responsed.error
+    })
 
     var submitBtn = document.querySelector('button')
     submitBtn.addEventListener('click', function(event) {
-        var data = document.querySelectorAll('input[hidden="hidden"], input[type="date"]')
+        var dataElements = document.querySelectorAll('input[hidden="hidden"], input[type="date"]')
         var params = {}
 
-        for (index = 0; index < data.length; ++index) {
-            if (data[index].value.length == 0) {
-                if (data[index].value.length == 0) {
-                    document.querySelector('#' + data[index].getAttribute('data-bind')).classList.add('widget-input-error')
+        for (index = 0; index < dataElements.length; ++index) {
+            if (dataElements[index].value.length == 0) {
+                if (dataElements[index].value.length == 0) {
+                    document.querySelector('#' + dataElements[index].getAttribute('data-bind')).classList.add('widget-input-error')
                 }
 
                 if (!this.classList.contains('widget-button-error')) {
                     this.classList.add('widget-button-error')
                 }
             } else {
-                params[data[index].name] = data[index].value
+                params[dataElements[index].name] = dataElements[index].value
             }
         }
+        progress(10, true)
 
-        sendRequest('/query/trainCount', params, function(responsed) {
-            console.log(responsed)
-        })
+        socket.emit('request.train.inforamtion', params)
     })
 })
 
@@ -51,7 +127,7 @@ function blurEvent(event) {
                 }
             }
         } else if (this.type == 'text') {
-            validateStation.call(this, this.value)
+            socket.emit('request.station.code', { stationName: encodeURI(this.value), element: this.id })
         }
     } else if (this.value.length == 0) {
         this.classList.add('widget-input-error')
@@ -95,50 +171,26 @@ function focusEvent(event) {
     document.querySelector('button').classList.remove('widget-button-error')
 }
 
-function validateStation(stationName) {
-    var element = this
-    sendRequest('/query/stationCode', { stationName: stationName }, function(responsed) {
-        if (typeof responsed === 'object') {
-            if (responsed.code !== undefined) {
-                var bind = document.querySelector('#' + element.getAttribute('data-bind'))
+function progress(increment, zero = false) {
+    var loaderBar = document.querySelector('#loader-bar')
 
-                if (typeof bind === 'object') {
-                    bind.value = responsed.code
-                }
-            } else if (responsed.error !== undefined) {
-                element.classList.add('widget-input-error')
-            }
-        }
-    })
-}
-
-function sendRequest(url, data, callback, type = 'POST', json = true) {
-    var xhr = new XMLHttpRequest()
-
-    xhr.open(type, url)
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            if (typeof callback === 'function') {
-                callback.call(this, json ? JSON.parse(xhr.response) : xhr.response)
-            }
-        }
-    }
-    xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded")
-    xhr.send(typeof data === 'object' ? parseData(data) : data)
-
-    try {
-        return json ? JSON.parse(xhr.response) : xhr.response
-    } catch (except) {
-        return xhr.response
-    }
-}
-
-function parseData(obj) {
-    var data = ''
-
-    for (key in obj) {
-        data += key + '=' + obj[key] + '&'
+    if (!loaderBar.classList.contains('is-loading')) {
+        loaderBar.classList.add('is-loading')
     }
 
-    return data.substr(0, data.length - 1)
+    if (zero === true) {
+        loaderBar.style.opacity = null
+        loaderBar.style.width = (parseFloat(increment)) + '%'
+    } else {
+        loaderBar.style.width = (parseFloat(loaderBar.style.width) + increment) + '%'
+    }
+    console.log(loaderBar.style.width)
+    if (parseInt(loaderBar.style.width) == 100 || parseFloat(loaderBar.style.width) >= 99.99) {
+        loaderBar.style.opacity = 0
+//        setTimeout(function() {
+//            loaderBar.style.opacity = 0
+//            loaderBar.classList.remove('is-loading')
+//            loaderBar.style.width = '0'
+//        }, 500)
+    }
 }
