@@ -63,27 +63,26 @@ class QueryError(IOError):
 
 # Getting Train Station List From 12306
 class TraStationList(object):
-    _stationList_url = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version='
+    __stationListURL = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version='
+    __stationList = {} # TODO. static member, static class
 
-    def __init__(self, stationVersion = '1.8954'):
-        self.__stationList = {} # TODO. static member, static class
-        self.__initTraStationList(stationVersion)
-
-    def __initTraStationList(self, stationVersion):
+    @staticmethod
+    def __initTraStationList(stationVersion = '1.8954'):
         try:
-            handler = urllib2.urlopen(self._stationList_url + stationVersion)
+            handler = urllib2.urlopen(TraStationList.__stationListURL + stationVersion)
         except urllib2.URLError:
             if _have_ssl == True and '_create_unverified_context' in dir(ssl):
-                handler = urllib2.urlopen(self._stationList_url + stationVersion, context = ssl._create_unverified_context())
+                handler = urllib2.urlopen(TraStationList.__stationListURL + stationVersion, context = ssl._create_unverified_context())
             else:
                 raise QueryError('Require SSL Module')
 
         if handler.getcode() == 200:
-            self.__parseStationList(handler.read())
+            TraStationList.__parseStationList(handler.read())
         else:
             raise QueryError("Get StationList Error Occurs.")
 
-    def __parseStationList(self, stationList):
+    @staticmethod
+    def __parseStationList(stationList):
         stationList = stationList.decode('utf-8')
         stationList = re.findall('([^@a-z|,;\'(\d+)_= ]+)', stationList.replace('  ', ''))
 
@@ -92,23 +91,26 @@ class TraStationList(object):
 
         index = 0
         while index < len(stationList):
-            self.__stationList[stationList[index]] = stationList[index + 1]
+            TraStationList.__stationList[stationList[index]] = stationList[index + 1]
             index += 2
 
-    def code(self, station):
+    @staticmethod
+    def code(station):
+        # Initialize Station List
+        if len(TraStationList.__stationList) == 0:
+            TraStationList.__initTraStationList()
+
         if type(station) == type(''):
             station = station.decode('utf-8')
 
-        if (station in self.__stationList):
-            return self.__stationList[station]
+        if (station in TraStationList.__stationList):
+            return TraStationList.__stationList[station]
         else:
             raise QueryError('Station Non Exists')
 
-    def contains(self, code):
-        return code in self.__stationList.values()
-
-# TraStationList Instance
-traStationList = TraStationList()
+    @staticmethod
+    def contains(code):
+        return code in TraStationList.__stationList.values()
 
 ''' TraSelect
     DOCs
@@ -278,8 +280,8 @@ class TraQuery(object):
 
     def letsGo(self, fromStation, toStation, date, erType = ERTYPE_ADULT):
         try:
-            fromStation = fromStation if traStationList.contains(fromStation) else traStationList.code(fromStation)
-            toStation   = toStation if traStationList.contains(toStation) else traStationList.code(toStation)
+            fromStation = fromStation if TraStationList.contains(fromStation) else TraStationList.code(fromStation)
+            toStation   = toStation if TraStationList.contains(toStation) else TraStationList.code(toStation)
             trainDate   = self.__parseDate(date)
             erType      = self.__parseErType(erType)
 

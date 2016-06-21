@@ -107,11 +107,17 @@
                 params[dataElements[index].name] = dataElements[index].value
             }
         }
+        window.trainCount = 0
         progress(10, true)
 
         socket.emit('request.train.inforamtion', params)
     })
 })
+
+function focusEvent(event) {
+    this.classList.remove('widget-input-error')
+    document.querySelector('button').classList.remove('widget-button-error')
+}
 
 function blurEvent(event) {
     if (this.value.length != 0) {
@@ -166,11 +172,6 @@ function disableSubmit() {
     }
 }
 
-function focusEvent(event) {
-    this.classList.remove('widget-input-error')
-    document.querySelector('button').classList.remove('widget-button-error')
-}
-
 function progress(increment, zero = false) {
     var loaderBar = document.querySelector('#loader-bar')
 
@@ -184,13 +185,8 @@ function progress(increment, zero = false) {
     } else {
         loaderBar.style.width = (parseFloat(loaderBar.style.width) + increment) + '%'
     }
-    console.log(loaderBar.style.width)
+
     if (parseInt(loaderBar.style.width) == 100 || parseFloat(loaderBar.style.width) >= 99.99) {
         loaderBar.style.opacity = 0
-//        setTimeout(function() {
-//            loaderBar.style.opacity = 0
-//            loaderBar.classList.remove('is-loading')
-//            loaderBar.style.width = '0'
-//        }, 500)
     }
 }

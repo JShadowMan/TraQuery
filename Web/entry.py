@@ -9,7 +9,7 @@ monkey.patch_all()
 
 application = flask.Flask(__name__)
 application.secret_key = '\x8f\xd4\xb6t8w{>q\xf9g\xd99H\xdfp\xa3\xa3f\x86Q\xb3t\x1e' # os.urandom(24)
-socketio = flask_socketio.SocketIO(application, async_mode = 'gevent')
+socketio = flask_socketio.SocketIO(application, async_mode = 'gevent', ping_timeout = 600)
 
 from TraQuery import TraQuery
 traQuery = TraQuery.TraQuery()
@@ -23,16 +23,16 @@ def index():
 def error_handler(e):
     print('An error has occurred: ' + str(e))
 
-@socketio.on('connection', namespace = '/query')
+@socketio.on('connect', namespace = '/query')
 def connection():
-    socketio.emit('response.station.code', { 'data': u'Welcome to Train Query Helper' })
+    socketio.emit('response.error', { 'data': u'Welcome to Train Query Helper' })
 
 @socketio.on('request.station.code', namespace = '/query')
 def queryStationCode(message):
     if (message.get('stationName') != None and message.get('element') != None):
         try:
             statioName = eval("'" + message.get('stationName').replace('%', '\\x').lower() + "'")
-            flask_socketio.emit('response.station.code', { 'code': TraQuery.traStationList.code(statioName), 'element': message.get('element') })
+            flask_socketio.emit('response.station.code', { 'code': TraQuery.TraStationList.code(statioName), 'element': message.get('element') })
 
         except TraQuery.QueryError, e:
             flask_socketio.emit('response.error', { 'error': e.getMessage(), 'element': message.get('element') })
@@ -65,7 +65,7 @@ def queryTraCount(message):
             flask_socketio.emit('response.train.item', responsed)
     except TraQuery.QueryError, e:
         flask_socketio.emit('response.error.nodata', { 'error': e.getMessage() })
-    except Exception, exc:
+    except Exception:
         print traceback.format_exc()
 
 
