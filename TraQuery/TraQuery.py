@@ -64,7 +64,7 @@ class QueryError(IOError):
 # Getting Train Station List From 12306
 class TraStationList(object):
     __stationListURL = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version='
-    __stationList = {} # TODO. static member, static class
+    __stationList = {}
 
     @staticmethod
     def __initTraStationList(stationVersion = '1.8954'):

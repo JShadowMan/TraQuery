@@ -23,10 +23,6 @@ def index():
 def error_handler(e):
     print('An error has occurred: ' + str(e))
 
-@socketio.on('connect', namespace = '/query')
-def connection():
-    socketio.emit('response.error', { 'data': u'Welcome to Train Query Helper' })
-
 @socketio.on('request.station.code', namespace = '/query')
 def queryStationCode(message):
     if (message.get('stationName') != None and message.get('element') != None):
@@ -67,7 +63,6 @@ def queryTraCount(message):
         flask_socketio.emit('response.error.nodata', { 'error': e.getMessage() })
     except Exception:
         print traceback.format_exc()
-
 
 if __name__ == '__main__':
     socketio.run(application, debug = True)
