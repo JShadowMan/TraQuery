@@ -110,7 +110,15 @@ class TraStationList(object):
 
     @staticmethod
     def contains(code):
+        if len(TraStationList.__stationList) == 0:
+            TraStationList.__initTraStationList()
+
         return code in TraStationList.__stationList.values()
+
+    @staticmethod
+    def stationNames():
+        return TraStationList.__stationList.keys()
+
 
 ''' TraSelect
     DOCs
@@ -195,6 +203,9 @@ class TraResult(object):
     def purchaseFlag(self, trainCode):
         if trainCode in self.__result['trains']:
             return self.__result['trains'][trainCode]['purchase']
+
+    def activate(self, trainCode):
+        return self.__result['trains'][trainCode]['activate']
     
     def selectTrainClass(self, trainCode):
         if trainCode in self.__result['trains']:
@@ -366,7 +377,8 @@ class TraQuery(object):
                 # All Station
                 'allStation': {},
                 # Seat Type
-                'seatType': trainInfo['seat_types']
+                'seatType': trainInfo['seat_types'],
+                'activate': True if len(train['buttonTextInfo']) == 2 else False
             }
 
     def __getStack(self, contents, stationNo):
