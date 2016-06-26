@@ -13,6 +13,11 @@
     toStation.addEventListener('focus', focusEvent)
     startDate.addEventListener('focus', focusEvent)
 
+    socket.on('response.server.status', function(responsed) {
+        document.querySelector('#online-count').innerHTML = responsed.online
+        document.querySelector('#active-count').innerHTML = responsed.active
+    })
+    
     /**
      * SocketIO.Event <response.station.code>
      * 
@@ -66,7 +71,13 @@
         var code = parseInt(responsed.code) == responsed.code ? ('_' + responsed.code) : responsed.code
 
         progress((80 / window.trainCount))
-        document.querySelector('#' + code).classList.add('train-loaded')
+        if (responsed.activate === false) {
+            document.querySelector('#' + code).classList.add('train-failed')
+        } else {
+            document.querySelector('#' + code).classList.add('train-loaded')
+        }
+
+        createTrainItem(responsed)
     })
 
     /**
@@ -88,6 +99,14 @@
         progress(100, true)
         document.querySelector('#train-count').innerHTML = responsed.error
     })
+
+    socket.on('response.test', function(responsed){
+        console.log(responsed)
+    })
+
+    window.onbeforeunload = function() {
+        socket.disconnect()
+    }
 
     var submitBtn = document.querySelector('button')
     submitBtn.addEventListener('click', function(event) {
@@ -123,11 +142,11 @@ function blurEvent(event) {
     if (this.value.length != 0) {
         if (this.type == 'date') {
             if (/\d{4}-\d{2}-\d{2}/.test(this.value) == true) {
-                var date = this.value.match(/(\d+)/g)
-                var now  = ((new Date).toLocaleDateString()).match(/(\d+)/g)
+                var date = new Date(this.value.replace(/-/g, '/'))
+                var now  = new Date()
 
-                for (index = 0; index < date.length; ++index) {
-                    if (parseInt(date[index]) < parseInt(now[index])) {
+                if (date.getTime() < now.getTime()) {
+                    if (date.getTime() < (new Date(now.toLocaleDateString())).getTime()) {
                         this.classList.add('widget-input-error')
                     }
                 }
@@ -186,7 +205,22 @@ function progress(increment, zero = false) {
         loaderBar.style.width = (parseFloat(loaderBar.style.width) + increment) + '%'
     }
 
-    if (parseInt(loaderBar.style.width) == 100 || parseFloat(loaderBar.style.width) >= 99.99) {
+    if (parseFloat(loaderBar.style.width) >= 99.9) {
         loaderBar.style.opacity = 0
     }
+}
+
+function createTrainItem(train) {
+    var node = document.createElement('li')
+
+    node.innerHTML = '<section>\
+        <h1 class="widget-hidden">' + train.code + '</h1>\
+        <div class="train-info">\
+            <p class="train-info-code">' + train.code + '</p>\
+            <p class="train-info-class">' + train.class + '</p>\
+            <p class="train-info-flag">' + train.buy + '</p>\
+        </div>\
+    </section>'
+
+    document.querySelector('.trains-list').appendChild(node)
 }

@@ -76,7 +76,7 @@ html {
             box-sizing: border-box;
 }
 body {
-    height: 100vh;
+    height: 100vh !important;
     cursor: default;
     color: rgb(51, 51, 51);
     font-family: 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
@@ -108,12 +108,33 @@ header {
     font-size: 2rem;
     margin-top: 2rem;
     text-align: center;
+    margin-bottom: 1rem;
 }
 header h1 {
     font-size: 3rem;
     font-style: italic;
     font-family: Georgia, serif;
     font-weight: normal;
+}
+#introduce p {
+    margin-bottom: 0;
+}
+#server-status-span {
+    color: #00BCD4;
+}
+#server-status-span::after {
+    content: ': ';
+}
+.server-status {
+    color: #9E9E9E;
+    display: inline;
+    margin-right: 1rem;
+}
+.server-status #online-count {
+    color: green;
+}
+.server-status #active-count {
+    color: red;
 }
 form {
     text-align: center;
@@ -240,7 +261,12 @@ button {
     
 }
 
-
+ul, li {
+    list-style: none;
+}
+.train-info p {
+    display: inline;
+}
 
 #train-count {
     text-align: center;
@@ -249,4 +275,7 @@ button {
 }
 .train-loaded {
     color: #0F0;
+}
+.train-failed {
+    color: #F00;
 }
