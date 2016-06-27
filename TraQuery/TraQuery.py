@@ -49,6 +49,13 @@ SEAT_RZ  = 'softSeat'           # 软座
 SEAT_YZ  = 'hardSeat'           # 硬座
 SEAT_GR  = 'advancedSoft'       # 高级软卧
 
+SORT_START_TIME = 'time.start'
+SORT_ARRIVE_TIME = 'time.arrive'
+SORT_TOTAL_TIME = 'time.total'
+
+ORDER_DESC = 'descending'
+ORDER_ASC = 'ascending'
+
 # Error Exception Class
 class QueryError(IOError):
     def __init__(self, reason, code = 0):
@@ -193,12 +200,12 @@ class TraResult(object):
     def trainCount(self):
         return self.__result['trainCount']
 
-    def trainCodes(self):
+    def trainCodes(self, sort = SORT_START_TIME, order = ORDER_ASC):
         codes = []
         for trainCode in self.__result['trains']:
-            codes.append(trainCode)
+            codes.append((trainCode, self.getTime(trainCode)))
 
-        return codes
+        return self.__sortTraCodes(codes, sort, order)
     
     def purchaseFlag(self, trainCode):
         if trainCode in self.__result['trains']:
@@ -206,7 +213,23 @@ class TraResult(object):
 
     def activate(self, trainCode):
         return self.__result['trains'][trainCode]['activate']
-    
+
+    def getStartTime(self, trainCode):
+        if trainCode in self.__result['trains']:
+            return self.__result['trains'][trainCode]['time']['start']
+
+    def getArriveTime(self, trainCode):
+        if trainCode in self.__result['trains']:
+            return self.__result['trains'][trainCode]['time']['arrive']
+
+    def getTotalTime(self, trainCode):
+        if trainCode in self.__result['trains']:
+            return self.__result['trains'][trainCode]['time']['total']
+
+    def getTime(self, trainCode):
+        if trainCode in self.__result['trains']:
+            return self.__result['trains'][trainCode]['time']
+
     def selectTrainClass(self, trainCode):
         if trainCode in self.__result['trains']:
             return self.__result['trains'][trainCode]['train']['class']
@@ -259,7 +282,20 @@ class TraResult(object):
                     self.__result['trains'][trainCode]['seatType'],
                     self.__result['date']
                 )
-    
+
+    def __sortTraCodes(self, codes, sort, order):
+        if sort == SORT_START_TIME:
+            codes = sorted(codes, key = lambda t : t[1]['start'])
+        elif sort == SORT_ARRIVE_TIME:
+            codes = sorted(codes, key = lambda t : t[1]['arrive'])
+        elif sort == SORT_TOTAL_TIME:
+            codes = sorted(codes, key = lambda t : t[1]['total'])
+
+        if order == ORDER_DESC:
+            codes.reverse()
+
+        return map(lambda t : t[0], codes)
+
     def __checkAllStations(self, trainCode):
         if len(self.__result['trains'][trainCode]['allStation']) == 0:
             self.__result['trains'][trainCode]['allStation'] = traSelect.selectStations(
@@ -369,7 +405,7 @@ class TraQuery(object):
                 # Could Purchase Flag
                 'purchase': trainInfo['canWebBuy'] == 'Y',
                 # Time Information
-                'time': { 'start': trainInfo['start_time'], 'end': trainInfo['arrive_time'], 'total': trainInfo['lishi'] },
+                'time': { 'start': trainInfo['start_time'], 'arrive': trainInfo['arrive_time'], 'total': trainInfo['lishi'] },
                 # Seat Price
                 'price': {},
                 # Stack Count
