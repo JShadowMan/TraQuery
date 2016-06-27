@@ -116,6 +116,9 @@ header h1 {
     font-family: Georgia, serif;
     font-weight: normal;
 }
+.train-text-loading {
+    animation: show-train-codes .666s ease-in-out;
+}
 #introduce p {
     margin-bottom: 0;
 }
@@ -243,7 +246,7 @@ button {
     border-color: #f00 !important;
 }
 .widget-button-disable {
-    cursor: not-allowed;
+    cursor: not-allowed !important;
     pointer-events: none;
     opacity: .65;
 }
@@ -257,17 +260,50 @@ button {
     background-color: #c9302c;
     border-color: #ac2925;
 }
-#tra_contents {
-    
+/**
+ * Train Table Style
+ */
+.train-lists {
+    width: 100%;
+    line-height: 1.5;
+    font-size: 1.7rem;
+    text-align: center;
+    border-collapse: collapse;
+}
+.train-lists thead {
+    letter-spacing: .1rem;
+    font-style: italic;
+}
+.train-lists .train-loading {
+    animation: show-train .666s ease-in-out;
+    transition: all .6s ease-in-out 0s;
+}
+.train-lists .train-loading {
+    -webkit-perspective: 1000;
+    -webkit-backface-visibility: hidden;
+}
+@keyframes show-train-codes {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
-ul, li {
-    list-style: none;
+@keyframes show-train {
+    from {
+        opacity: 0;
+        transform: translatey(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translatey(0);
+    }
 }
-.train-info p {
-    display: inline;
-}
-
+/**
+ * Loading Style
+ */
 #train-count {
     text-align: center;
     white-space: nowrap;

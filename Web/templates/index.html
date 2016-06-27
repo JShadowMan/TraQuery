@@ -37,10 +37,17 @@
     <section id="query-result">
         <!-- Display Contents -->
         <section id="train-info">
-            <h2 id="train-count"></h2>
-            <ul class="trains-list">
-                <!-- <li class="train-code-item"></li> -->
-            </ul>
+            <h2 id="train-count"><span>&nbsp;</span></h2>
+            <table class="train-lists">
+                <thead>
+                    <tr>
+                        <td>Code</td><td>Class</td><td>Start</td><td>Arrive</td><td>Total</td><td>Buy</td><td>Query</td>
+                    </tr>
+                </thead>
+                <tbody class="trains-list">
+                    <!-- Train Item -->
+                </tbody>
+            </table>
         </section>
     </section>
 {%- endblock contents -%}

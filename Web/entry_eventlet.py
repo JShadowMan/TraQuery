@@ -49,7 +49,7 @@ def queryStationCode(message):
 
 
 @socketio.on('request.train.inforamtion', namespace = '/query')
-def queryTraCount(message):
+def queryTraInformation(message):
     if message.get('fromStationCode') == None or message.get('toStationCode') == None or message.get('date') == None:
         flask_socketio.emit('response.error', { 'error': 'Request Bad' })
 
@@ -64,8 +64,8 @@ def queryTraCount(message):
         flask_socketio.emit('response.train.count', { 'count': traResult.trainCount() })
         # Send All Train Code
         flask_socketio.emit('response.train.codes', { 'trains': traResult.trainCodes() })
-        # Send Train Inforamtion
 
+        # Send Train Information
         flask_socketio.emit('response.server.status', serverStatus)
         for trainCode in traResult.trainCodes():
             responsed = {}
@@ -74,6 +74,7 @@ def queryTraCount(message):
 
             if traResult.activate(trainCode) == True:
                 responsed['seats'] = traResult.SelectSeat(trainCode)
+                responsed['time'] = traResult.getTime(trainCode)
             else:
                 responsed['activate'] = False
 

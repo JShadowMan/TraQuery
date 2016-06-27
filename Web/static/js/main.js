@@ -57,14 +57,16 @@
      * Receive And Display Train Codes
      */
     socket.on('response.train.codes', function(responsed) {
-        var trainList = document.querySelector('#train-count').innerHTML + ' [ '
+        var trainText = document.querySelector('#train-count')
+        var trainList = trainText.innerHTML + ' [ '
 
+        trainText.classList.add('train-text-loading')
         for (index = 0; index < responsed.trains.length; ++index) {
             id = parseInt(responsed.trains[index]) == responsed.trains[index] ? ('_' + responsed.trains[index]) : responsed.trains[index]
             trainList += '<span id="' + id + '">' + responsed.trains[index] + '</span> '
         }
 
-        document.querySelector('#train-count').innerHTML = trainList + ' ]'
+        trainText.innerHTML = trainList + ' ]'
     })
 
     socket.on('response.train.item', function(responsed) {
@@ -209,18 +211,15 @@ function progress(increment, zero = false) {
         loaderBar.style.opacity = 0
     }
 }
-
+// TODO 南京 北京 7-27
 function createTrainItem(train) {
-    var node = document.createElement('li')
+    var node = document.createElement('tr')
 
-    node.innerHTML = '<section>\
-        <h1 class="widget-hidden">' + train.code + '</h1>\
-        <div class="train-info">\
-            <p class="train-info-code">' + train.code + '</p>\
-            <p class="train-info-class">' + train.class + '</p>\
-            <p class="train-info-flag">' + train.buy + '</p>\
-        </div>\
-    </section>'
+    node.innerHTML = '<td>' + train.code + '</td><td>' + train.class + '</td>\
+        <td>' + train.time.start + '</td><td>' + train.time.arrive + '</td><td>' + train.time.total + '</td>\
+        <td>' + (train.buy == true ? '<span class="enable-buy">Yes</span>' : '<span class="disable-buy">No</span>') + '</td>\
+        <td><button class="query-bus-adjustment ' + (train.buy == true ? 'widget-button-disable' : '') + '" ' + (train.buy == true ? 'disable="disable"' : '') + '>Query</button></td>'
 
+    node.classList.add('train-loading')
     document.querySelector('.trains-list').appendChild(node)
 }
