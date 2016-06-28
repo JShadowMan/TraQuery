@@ -282,6 +282,13 @@ button {
     -webkit-perspective: 1000;
     -webkit-backface-visibility: hidden;
 }
+.train-invalid {
+    color: #9E9E9E;
+}
+.train-remove {
+    opacity: 0;
+}
+
 @keyframes show-train-codes {
     from {
         opacity: 0;

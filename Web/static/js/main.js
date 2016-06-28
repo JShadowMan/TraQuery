@@ -71,6 +71,7 @@
 
     socket.on('response.train.item', function(responsed) {
         var code = parseInt(responsed.code) == responsed.code ? ('_' + responsed.code) : responsed.code
+        var trainCodes = document.querySelector('#train-count')
 
         progress((80 / window.trainCount))
         if (responsed.activate === false) {
@@ -79,6 +80,7 @@
             document.querySelector('#' + code).classList.add('train-loaded')
         }
 
+//        if (trainCodes.scrollWidth > = 0 && )
         createTrainItem(responsed)
     })
 
@@ -114,6 +116,16 @@
     submitBtn.addEventListener('click', function(event) {
         var dataElements = document.querySelectorAll('input[hidden="hidden"], input[type="date"]')
         var params = {}
+
+        trainList = document.querySelectorAll('.train-loading')
+        if (trainList.length > 0) {
+            for (var index = 0; index < trainList.length; ++index) {
+                trainList[index].classList.add('train-remove')
+                setTimeout((function(train) {
+                    train.remove()
+                })(trainList[index]), 600)
+            }
+        }
 
         for (index = 0; index < dataElements.length; ++index) {
             if (dataElements[index].value.length == 0) {
@@ -214,6 +226,16 @@ function progress(increment, zero = false) {
 // TODO 南京 北京 7-27
 function createTrainItem(train) {
     var node = document.createElement('tr')
+
+    if (train.activate === false) {
+        console.log(train)
+        train.time = {}
+        train.time.start = '00:00'
+        train.time.arrive = '00:00'
+        train.time.total = '00:00'
+
+        node.classList.add('train-invalid')
+    }
 
     node.innerHTML = '<td>' + train.code + '</td><td>' + train.class + '</td>\
         <td>' + train.time.start + '</td><td>' + train.time.arrive + '</td><td>' + train.time.total + '</td>\
