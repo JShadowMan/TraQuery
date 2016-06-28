@@ -4,6 +4,7 @@
 '''This Package Provides Train Query
 
 Object Type:
+
     TraError ---
 
     TraQuery ---
@@ -384,9 +385,13 @@ class TraQuery(object):
     def __parseResult(self, contents, date, erType):
         contents = json.loads(contents)
 
+        if 'data' not in contents:
+            raise QueryError('Date Error Occurs')
+
         self.__result['trainCount'] = len(contents['data'])
         if len(contents['data']) == 0:
             raise QueryError('Not Train Data')
+
         self.__result['erType'] = erType
         self.__result['date'] = date
 
