@@ -278,10 +278,6 @@ button {
     animation: show-train .666s ease-in-out;
     transition: all .6s ease-in-out 0s;
 }
-.train-lists .train-loading {
-    -webkit-perspective: 1000;
-    -webkit-backface-visibility: hidden;
-}
 .train-invalid {
     color: #9E9E9E;
 }

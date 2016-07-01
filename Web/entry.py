@@ -32,7 +32,9 @@ def connection():
 def disconnection():
     global serverStatus
     serverStatus['online'] -= 1
-    serverStatus['active'] -= 1 if serverStatus['active'] > 0 else 0
+    serverStatus['active'] -= 1
+    if serverStatus['active'] < 0:
+        serverStatus['active'] = 0
     flask_socketio.emit('response.server.status', serverStatus, broadcast = True)
 
 @socketio.on('request.station.code', namespace = '/query')
@@ -86,7 +88,7 @@ def queryTraInformation(message):
     except Exception:
         print traceback.format_exc()
 
-    serverStatus['active'] -= 1
+    serverStatus['active'] -= 1 if serverStatus['active'] > 0 else 0
     flask_socketio.emit('response.server.status', serverStatus)
 
 
