@@ -276,7 +276,7 @@ button {
 }
 .train-lists .train-loading {
     animation: show-train .666s ease-in-out;
-    transition: all .6s ease-in-out 0s;
+    transition: all .6s ease-in-out;
 }
 .train-invalid {
     color: #9E9E9E;

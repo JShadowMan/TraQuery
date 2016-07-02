@@ -223,12 +223,11 @@ function progress(increment, zero = false) {
         loaderBar.style.opacity = 0
     }
 }
-// TODO 南京 北京 7-27
+
 function createTrainItem(train) {
     var node = document.createElement('tr')
 
     if (train.activate === false) {
-        console.log(train)
         train.time = {}
         train.time.start = '00:00'
         train.time.arrive = '00:00'
@@ -240,7 +239,7 @@ function createTrainItem(train) {
     node.innerHTML = '<td>' + train.code + '</td><td>' + train.class + '</td>\
         <td>' + train.time.start + '</td><td>' + train.time.arrive + '</td><td>' + train.time.total + '</td>\
         <td>' + (train.buy == true ? '<span class="enable-buy">Yes</span>' : '<span class="disable-buy">No</span>') + '</td>\
-        <td><button class="query-bus-adjustment ' + (train.buy == true ? 'widget-button-disable' : '') + '" ' + (train.buy == true ? 'disable="disable"' : '') + '>Query</button></td>'
+        <td><button class="query-bus-adjustment ' + (train.buy == true || train.activate === false ? 'widget-button-disable' : '') + '" ' + (train.buy == true || train.activate === false ? 'disable="disable"' : '') + '>Query</button></td>'
 
     node.classList.add('train-loading')
     document.querySelector('.trains-list').appendChild(node)
