@@ -1,5 +1,10 @@
-﻿document.addEventListener("DOMContentLoaded", function() {
-    window.socket = io.connect('http://' + document.domain + ':' + location.port + '/query')
+﻿"use strict"
+
+try {
+document.addEventListener("DOMContentLoaded", function() {
+    window.socket = io.connect('http://' + document.domain + ':' + location.port + '/query', {
+        'timeout': 1000
+    })
 
     var fromStation = document.querySelector('#fromStation')
     var toStation   = document.querySelector('#toStation')
@@ -24,7 +29,7 @@
      * Receive Station Code From Server
      */
     socket.on('response.station.code', function(responsed){
-        element = document.querySelector('#' + responsed.element)
+        var element = document.querySelector('#' + responsed.element)
 
         if (responsed.code !== undefined && element) {
             var bind = document.querySelector('#' + element.getAttribute('data-bind'))
@@ -61,8 +66,8 @@
         var trainList = trainText.innerHTML + ' [ '
 
         trainText.classList.add('train-text-loading')
-        for (index = 0; index < responsed.trains.length; ++index) {
-            id = parseInt(responsed.trains[index]) == responsed.trains[index] ? ('_' + responsed.trains[index]) : responsed.trains[index]
+        for (var index = 0; index < responsed.trains.length; ++index) {
+            var id = parseInt(responsed.trains[index]) == responsed.trains[index] ? ('_' + responsed.trains[index]) : responsed.trains[index]
             trainList += '<span id="' + id + '">' + responsed.trains[index] + '</span> '
         }
 
@@ -108,6 +113,12 @@
         console.log(responsed)
     })
 
+    socket.on('connect', function() {
+        socket.on('disconnect', function() {
+            console.log('disconnect')
+        })
+    })
+
     window.onbeforeunload = function() {
         socket.disconnect()
     }
@@ -117,7 +128,7 @@
         var dataElements = document.querySelectorAll('input[hidden="hidden"], input[type="date"]')
         var params = {}
 
-        trainList = document.querySelectorAll('.train-loading')
+        var trainList = document.querySelectorAll('.train-loading')
         if (trainList.length > 0) {
             for (var index = 0; index < trainList.length; ++index) {
                 trainList[index].classList.add('train-remove')
@@ -178,7 +189,7 @@ function blurEvent(event) {
 function checkSubmit() {
     var inputs = document.querySelectorAll('.widget-input-group input')
 
-    for (index = 0; index < inputs.length; ++index) {
+    for (var index = 0; index < inputs.length; ++index) {
         if (inputs[index].value.length == 0) {
             return disableSubmit()
         }
@@ -239,8 +250,11 @@ function createTrainItem(train) {
     node.innerHTML = '<td>' + train.code + '</td><td>' + train.class + '</td>\
         <td>' + train.time.start + '</td><td>' + train.time.arrive + '</td><td>' + train.time.total + '</td>\
         <td>' + (train.buy == true ? '<span class="enable-buy">Yes</span>' : '<span class="disable-buy">No</span>') + '</td>\
-        <td><button class="query-bus-adjustment ' + (train.buy == true || train.activate === false ? 'widget-button-disable' : '') + '" ' + (train.buy == true || train.activate === false ? 'disable="disable"' : '') + '>Query</button></td>'
+        <td><button class="widget-btn query-bus-adjustment ' + (train.buy == true || train.activate === false ? 'widget-button-disable' : 'widget-btn-default') + '" ' + (train.buy == true || train.activate === false ? 'disable="disable"' : '') + '>Adjust</button></td>'
 
     node.classList.add('train-loading')
     document.querySelector('.trains-list').appendChild(node)
+}
+} catch (e) {
+    console.log(e)
 }

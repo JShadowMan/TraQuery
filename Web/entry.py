@@ -22,6 +22,10 @@ def index():
 def error_handler(e):
     print('An error has occurred: ' + str(e))
 
+@socketio.on_error(namespace = '/query')
+def error_handle():
+    print 'error occurs'
+
 @socketio.on('connect', namespace = '/query')
 def connection():
     global serverStatus
@@ -52,6 +56,7 @@ def queryStationCode(message):
 
 @socketio.on('request.train.inforamtion', namespace = '/query')
 def queryTraInformation(message):
+    print 'request', message.get('fromStationCode'), message.get('toStationCode'), message.get('date'), '\n'
     if message.get('fromStationCode') == None or message.get('toStationCode') == None or message.get('date') == None:
         flask_socketio.emit('response.error', { 'error': 'Request Bad' })
 
@@ -70,6 +75,8 @@ def queryTraInformation(message):
         # Send Train Information
         flask_socketio.emit('response.server.status', serverStatus)
         for trainCode in traResult.trainCodes():
+            print 'start to receive', trainCode
+            
             responsed = {}
             responsed['code'] = trainCode
             responsed['class'] = traResult.selectTrainClass(trainCode)
@@ -81,8 +88,10 @@ def queryTraInformation(message):
                 responsed['activate'] = False
 
             responsed['buy'] = traResult.purchaseFlag(trainCode)
-
+            print trainCode, 'receive complete', 'Sending...'
             flask_socketio.emit('response.train.item', responsed)
+            print trainCode, 'Send\n'
+
     except TraQuery.QueryError, e:
         flask_socketio.emit('response.error.nodata', { 'error': e.getMessage() })
     except Exception:
