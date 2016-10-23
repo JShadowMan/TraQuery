@@ -4,46 +4,49 @@
 '''
 import os, re
 import pickle
-import requests
+import asyncio
+from trainquery import utils
 
 class TrainStation(dict):
 
     __getStationVersionAddress = 'https://kyfw.12306.cn/otn/index/init'
-    __stationListAddress = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version={}'
+    __stationListAddress = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js'
     
-    def __init__(self):
-        if os.path.isfile('station.pkl'):
+    def __init__(self, *, loop):
+        self.__loop = asyncio.new_event_loop()
+        self.__stationList = None
+        self.__stationVersion = None
+
+        asyncio.set_event_loop(self.__loop)
+
+        self.__loop.run_until_complete(self.__getStationVersion())
+
+        if os.path.isfile('station_{}.pkl'.format(self.__stationVersion)):
             super(TrainStation, self).__init__(self.__loadStations())
         else:
-            stationList = self.__initTrainStationList()
-            super(TrainStation, self).__init__(stationList)
+            self.__loop.run_until_complete(self.__initTrainStationList())
 
-            self.__dumpStation(stationList)
+            super(TrainStation, self).__init__(self.__stationList)
+            self.__dumpStation(self.__stationList)
 
-    def __initTrainStationList(self):
-        response = self.__getStationList()
+        asyncio.set_event_loop(loop)
 
-        return self.__parseResponse(response)
+    async def __initTrainStationList(self):
+        response = await self.__getStationList()
 
-    def __getStationList(self):
+        self.__stationList = self.__parseResponse(response)
+
+    async def __getStationList(self):
         try:
-            response = requests.get(self.__stationListAddress.format(self.__getStationVersion()), verify = False)
-
-            if response.status_code is not requests.codes.OK:
-                raise Exception
-            return response.text
-
+            payload = { 'station_version': self.__stationVersion }
+            return await utils.fetch(loop = self.__loop, url = self.__stationListAddress, params = payload)
         except Exception as e:
             print(e)
 
-    def __getStationVersion(self):
+    async def __getStationVersion(self):
         try:
-            response = requests.get(self.__getStationVersionAddress, verify = False)
-
-            if response.status_code is not requests.codes.OK:
-                raise Exception
-
-            return re.search(r'station_version=([\d\.]+)', response.text).groups()[0]
+            response = await utils.fetch(loop = self.__loop, url = self.__getStationVersionAddress)
+            self.__stationVersion = re.search(r'station_version=([\d\.]+)', response).groups()[0]
         except Exception as e:
             print(e)
 
@@ -62,15 +65,25 @@ class TrainStation(dict):
         return stationList
 
     def __loadStations(self):
-        with open('station.pkl', 'rb') as fd:
+        with open('station_{}.pkl'.format(self.__stationVersion), 'rb') as fd:
             try:
                 return pickle.load(fd)
             except EOFError:
                 return self.__initTrainStationList()
 
     def __dumpStation(self, data):
-        with open('station.pkl', 'wb') as fd:
+        with open('station_{}.pkl'.format(self.__stationVersion), 'wb') as fd:
             pickle.dump(data, fd, pickle.HIGHEST_PROTOCOL)
 
-if __name__ == '__main__':
-    pass
+__singleInstance = None
+
+def init(loop):
+    global __singleInstance
+    __singleInstance = TrainStation(loop = loop)
+
+def get(station):
+    global __singleInstance
+    if __singleInstance is None:
+        raise Exception('muse be run init first')
+    return __singleInstance.get(station, None)
+
