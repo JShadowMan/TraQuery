@@ -52,22 +52,38 @@ class Query(object):
         return await self.__query(fromStation, toStation, date, passengerType)
 
     async def __query(self, fromStation, toStation, date, passengerType):
+        trainInformation = await self.__getTrainInformation(fromStation, toStation, date, passengerType)
+        stackInformation = await self.__getStackInformation(fromStation, toStation, date, passengerType)
+
+        try:
+            return train_query_result.QueryResult(json.loads(trainInformation),
+                                                  json.loads(stackInformation), loop = self.__loop)
+        except TypeError:
+            if trainInformation is None:
+                trainInformation = await self.__getTrainInformation(fromStation, toStation, date, passengerType)
+            if stackInformation is None:
+                stackInformation = await self.__getStackInformation(fromStation, toStation, date, passengerType)
+
+            try:
+                return train_query_result.QueryResult(json.loads(trainInformation),
+                                                      json.loads(stackInformation), loop = self.__loop)
+            except Exception:
+                raise
+
+    async def __getTrainInformation(self, fromStation, toStation, date, passengerType):
         payload = OrderedDict([
             ('leftTicketDTO.train_date', date),
             ('leftTicketDTO.from_station', fromStation),
             ('leftTicketDTO.to_station', toStation),
             ('purpose_codes', passengerType)
-        ]) # **** 1*3*6
-        trainInformation = await utils.fetch(self.__loop, url = self.__queryTrainUrl, params = payload)
+        ])  # **** 1*3*6
+        return await utils.fetch(self.__loop, url = self.__queryTrainUrl, params = payload)
 
+    async def __getStackInformation(self, fromStation, toStation, date, passengerType):
         payload = OrderedDict([
             ('purpose_codes', passengerType),
             ('queryDate', date),
             ('from_station', fromStation),
             ('to_station', toStation)
         ])
-        stackInformation = await utils.fetch(self.__loop, url = self.__queryStackUrl, params = payload)
-
-        return train_query_result.QueryResult(json.loads(trainInformation),
-                                              json.loads(stackInformation), loop = self.__loop)
-
+        return await utils.fetch(self.__loop, url=self.__queryStackUrl, params=payload)
