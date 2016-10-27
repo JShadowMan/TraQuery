@@ -5,12 +5,12 @@
 
 import asyncio
 from collections import namedtuple
+from trainquery import train_selector
 
 TrainProfile = namedtuple('TrainProfile', 'code id')
 Station = namedtuple('Station', 'name code pos')
 TrainStation = namedtuple('TrainStation', 'start end')
 TrainTime = namedtuple('TrainTime', 'start arrive total')
-
 
 class QueryResult(object):
 
@@ -19,8 +19,20 @@ class QueryResult(object):
 
         stacks = stacks['data']['datas']
         for train in trains.get('data', {}):
-            self.__trainsInfo['trains'][ self.__trainCode(train)  ] = self.__trainInfo(train, stacks)
+            self.__trainsInfo['trains'][ self.__trainCode(train)  ] = self.__trainInfo(train, stacks)\
 
+        self.__trainsInfo['trainCount'] = len(self.__trainsInfo['trains'])
+
+        # print(self.__trainsInfo)
+
+    def select(self, trainCode):
+        if trainCode in self.__trainsInfo:
+            return train_selector.TrainSelector(self.__trainsInfo[trainCode])
+        else:
+            raise TypeError('train code not found in train list')
+
+    def getTrainsCode(self):
+        return self.__trainsInfo.get('trains').keys()
 
     def __trainCode(self, train):
         return train.get('queryLeftNewDTO', {}).get('station_train_code', None)
@@ -58,7 +70,6 @@ class QueryResult(object):
         # Seat Stack Information
         information['stack'] = self.__getStackInformation(stacks, train['train_no'])
 
-        print(information)
         return information
 
     def __getStackInformation(self, stacks, trainId):
@@ -92,3 +103,4 @@ class QueryResult(object):
         for train in trains.get('data', {}):
             codes.append(train['queryLeftNewDTO']['station_train_code'])
         return codes
+

@@ -13,7 +13,7 @@ class TrainStation(dict):
     __stationListAddress = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js'
     
     def __init__(self, *, loop):
-        self.__loop = asyncio.new_event_loop()
+        self.__loop = asyncio.get_event_loop()
         self.__stationList = None
         self.__stationVersion = None
 
@@ -41,14 +41,14 @@ class TrainStation(dict):
             payload = { 'station_version': self.__stationVersion }
             return await utils.fetch(loop = self.__loop, url = self.__stationListAddress, params = payload)
         except Exception as e:
-            print(e)
+            print('__getStationList error')
 
     async def __getStationVersion(self):
         try:
             response = await utils.fetch(loop = self.__loop, url = self.__getStationVersionAddress)
             self.__stationVersion = re.search(r'station_version=([\d\.]+)', response).groups()[0]
         except Exception as e:
-            print(e)
+            print('__getStationVersion error')
 
     def __parseResponse(self, response):
         temp = re.findall('([^@a-z|,;\'(\d+)_= ]+)', response.replace('  ', ''))

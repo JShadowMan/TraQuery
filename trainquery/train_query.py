@@ -2,7 +2,6 @@
 
 '''
 
-import re
 import time
 import json
 import asyncio
@@ -15,16 +14,15 @@ class StationError(Exception):
     pass
 
 class Query(object):
-    __queryTrainUrl = 'https://kyfw.12306.cn/otn/leftTicket/queryC'
+    __queryTrainUrl = 'https://kyfw.12306.cn/otn/leftTicket/queryX'
     __queryStackUrl = 'https://kyfw.12306.cn/otn/lcxxcx/query'
 
     def __init__(self, *, loop = asyncio.get_event_loop()):
         self.__loop = loop
-        self.__loop.set_debug(True)
 
         train_station.init(self.__loop)
 
-    async def query(self, fromStation, toStation, date, isStudent = False):
+    async def query(self, fromStation, toStation, date, isStudent = False, *, future = None):
         if not isinstance(date, (int, float)):
             raise TypeError('date must be unix stamp, not %s' % type(date).__name__)
 
@@ -49,7 +47,10 @@ class Query(object):
         if isStudent is True:
             passengerType = '0X00'
 
-        return await self.__query(fromStation, toStation, date, passengerType)
+        if future is None:
+            return await self.__query(fromStation, toStation, date, passengerType)
+        else:
+            future.set_result(await self.__query(fromStation, toStation, date, passengerType))
 
     async def __query(self, fromStation, toStation, date, passengerType):
         trainInformation = await self.__getTrainInformation(fromStation, toStation, date, passengerType)
@@ -68,6 +69,7 @@ class Query(object):
                 return train_query_result.QueryResult(json.loads(trainInformation),
                                                       json.loads(stackInformation), loop = self.__loop)
             except Exception:
+                print('__query error')
                 raise
 
     async def __getTrainInformation(self, fromStation, toStation, date, passengerType):
