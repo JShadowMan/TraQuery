@@ -58,7 +58,7 @@ class Query(object):
 
         try:
             return train_query_result.QueryResult(json.loads(trainInformation),
-                                                  json.loads(stackInformation), loop = self.__loop)
+                                                  json.loads(stackInformation), date, loop = self.__loop)
         except TypeError:
             if trainInformation is None:
                 trainInformation = await self.__getTrainInformation(fromStation, toStation, date, passengerType)

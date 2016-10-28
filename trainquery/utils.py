@@ -13,3 +13,12 @@ async def fetch(loop, *args, **kwargs):
                     raise Exception('request error', response.status)
     except Exception as e:
         print('utils.fetch error', e)
+
+
+def dictGet(dic, key):
+    if key in dic:
+        if dic[key] == '--' or dic[key] == '\u65e0':
+            return None
+        return dic[key]
+    else:
+        return None

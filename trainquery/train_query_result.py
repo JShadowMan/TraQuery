@@ -6,6 +6,7 @@
 import asyncio
 from collections import namedtuple
 from trainquery import train_selector
+from trainquery import utils
 
 TrainProfile = namedtuple('TrainProfile', 'code id')
 Station = namedtuple('Station', 'name code pos')
@@ -14,20 +15,21 @@ TrainTime = namedtuple('TrainTime', 'start arrive total')
 
 class QueryResult(object):
 
-    def __init__(self, trains, stacks, *, loop = asyncio.get_event_loop()):
+    def __init__(self, trains, stacks, date, *, loop = asyncio.get_event_loop()):
         self.__trainsInfo = { 'trainCount': None, 'trains': {} }
 
         stacks = stacks['data']['datas']
         for train in trains.get('data', {}):
-            self.__trainsInfo['trains'][ self.__trainCode(train)  ] = self.__trainInfo(train, stacks)\
+            self.__trainsInfo['trains'][ self.__trainCode(train)  ] = self.__trainInfo(train, stacks)
 
         self.__trainsInfo['trainCount'] = len(self.__trainsInfo['trains'])
 
-        # print(self.__trainsInfo)
+        self.__loop = loop
+        self.__date = date
 
     def select(self, trainCode):
-        if trainCode in self.__trainsInfo:
-            return train_selector.TrainSelector(self.__trainsInfo[trainCode])
+        if trainCode in self.__trainsInfo['trains']:
+            return train_selector.TrainSelector(self.__trainsInfo['trains'][trainCode], self.__date, loop = self.__loop)
         else:
             raise TypeError('train code not found in train list')
 
@@ -40,7 +42,6 @@ class QueryResult(object):
     def __trainInfo(self, train, stacks):
         information = {}
 
-        information['stations'] = {}
         information['activate'] =  True if len(train['buttonTextInfo']) == 2 else False
         if 'queryLeftNewDTO' in train:
             train = train['queryLeftNewDTO']
@@ -69,6 +70,8 @@ class QueryResult(object):
         information['price'] = None
         # Seat Stack Information
         information['stack'] = self.__getStackInformation(stacks, train['train_no'])
+        # all stations
+        information['stations'] = None
 
         return information
 
@@ -79,24 +82,16 @@ class QueryResult(object):
                 stack = trainCode
                 break
         return {
-            '\u5546\u52a1': self.__stackGet(stack, 'swz_num'),  # 商务
-            '\u4e00\u7b49\u5ea7': self.__stackGet(stack, 'zy_num'),  # 一等座
-            '\u4e8c\u7b49\u5ea7': self.__stackGet(stack, 'ze_num'),  # 二等座
-            '\u65e0\u5ea7': self.__stackGet(stack, 'wz_num'),  # 无座
-            '\u786c\u5ea7': self.__stackGet(stack, 'yz_num'),  # 硬座
-            '\u8f6f\u5ea7': self.__stackGet(stack, 'rz_num'),  # 软座
-            '\u786c\u5367': self.__stackGet(stack, 'yw_num'),  # 硬卧
-            '\u8f6f\u5367': self.__stackGet(stack, 'rw_num'),  # 软卧
-            '\u9ad8\u7ea7\u8f6f\u5367': self.__stackGet(stack, 'gr_num')  # 高级软卧
+            '\u5546\u52a1': utils.dictGet(stack, 'swz_num'),  # 商务
+            '\u4e00\u7b49\u5ea7': utils.dictGet(stack, 'zy_num'),  # 一等座
+            '\u4e8c\u7b49\u5ea7': utils.dictGet(stack, 'ze_num'),  # 二等座
+            '\u65e0\u5ea7': utils.dictGet(stack, 'wz_num'),  # 无座
+            '\u786c\u5ea7': utils.dictGet(stack, 'yz_num'),  # 硬座
+            '\u8f6f\u5ea7': utils.dictGet(stack, 'rz_num'),  # 软座
+            '\u786c\u5367': utils.dictGet(stack, 'yw_num'),  # 硬卧
+            '\u8f6f\u5367': utils.dictGet(stack, 'rw_num'),  # 软卧
+            '\u9ad8\u7ea7\u8f6f\u5367': utils.dictGet(stack, 'gr_num')  # 高级软卧
         }
-
-    def __stackGet(self, dic, key):
-        if key in dic:
-            if dic[key] == '--' or dic[key] == '\u65e0':
-                return None
-            return dic[key]
-        else:
-            return None
 
     def __trainCodes(self, trains):
         codes = []
