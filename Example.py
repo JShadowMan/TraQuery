@@ -2,19 +2,22 @@
 
 '''
 import time
+import random
 import asyncio
 import cProfile
 from trainquery import train_query
 
 async def resultHandler(results, loop):
     for result in results:
-        selector = result.select(list(result.getTrainsCode())[0])
+        selector = result.select(random.choice(list(result.getTrainsCode())))
         print(selector.code, selector.startTime, selector.arriveTime, selector.totalTime, selector.start, selector.end)
-        print(await selector.seat('二等座'))
+        print('\t', await selector.seat(all = True))
+        print('\t\t', await selector.check())
+        print()
 
 loop = asyncio.get_event_loop()
 
-# loop.set_debug(True)
+loop.set_debug(True)
 query = train_query.Query()
 
 task = [

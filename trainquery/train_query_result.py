@@ -15,21 +15,22 @@ TrainTime = namedtuple('TrainTime', 'start arrive total')
 
 class QueryResult(object):
 
-    def __init__(self, trains, stacks, date, *, loop = asyncio.get_event_loop()):
+    def __init__(self, trains, stacks, date, passengerType, *, loop = asyncio.get_event_loop()):
         self.__trainsInfo = { 'trainCount': None, 'trains': {} }
+        self.__date = date
+        self.__passengerType = passengerType
 
         stacks = stacks['data']['datas']
         for train in trains.get('data', {}):
-            self.__trainsInfo['trains'][ self.__trainCode(train)  ] = self.__trainInfo(train, stacks)
+            self.__trainsInfo['trains'][ self.__trainCode(train) ] = self.__trainInfo(train, stacks)
 
         self.__trainsInfo['trainCount'] = len(self.__trainsInfo['trains'])
 
         self.__loop = loop
-        self.__date = date
 
     def select(self, trainCode):
         if trainCode in self.__trainsInfo['trains']:
-            return train_selector.TrainSelector(self.__trainsInfo['trains'][trainCode], self.__date, loop = self.__loop)
+            return train_selector.TrainSelector(self.__trainsInfo['trains'][trainCode], loop = self.__loop)
         else:
             raise TypeError('train code not found in train list')
 
@@ -53,9 +54,9 @@ class QueryResult(object):
         )
         # Station Information
         information['station'] = TrainStation(
-            # from to
+            # from end
             Station(train['from_station_name'], train['from_station_telecode'], train['from_station_no']),
-            Station(train['end_station_name'], train['to_station_telecode'], train['to_station_no'])
+            Station(train['to_station_name'], train['to_station_telecode'], train['to_station_no'])
         )
         # Purchase Flag
         information['purchase'] = True if train['canWebBuy'] == 'Y' else False
@@ -72,6 +73,8 @@ class QueryResult(object):
         information['stack'] = self.__getStackInformation(stacks, train['train_no'])
         # all stations
         information['stations'] = None
+        # date, passengerType
+        information['other'] = (self.__date, self.__passengerType)
 
         return information
 
@@ -81,7 +84,7 @@ class QueryResult(object):
             if trainCode['train_no'] == trainId:
                 stack = trainCode
                 break
-        return {
+        contents = {
             '\u5546\u52a1': utils.dictGet(stack, 'swz_num'),  # 商务
             '\u4e00\u7b49\u5ea7': utils.dictGet(stack, 'zy_num'),  # 一等座
             '\u4e8c\u7b49\u5ea7': utils.dictGet(stack, 'ze_num'),  # 二等座
@@ -92,6 +95,10 @@ class QueryResult(object):
             '\u8f6f\u5367': utils.dictGet(stack, 'rw_num'),  # 软卧
             '\u9ad8\u7ea7\u8f6f\u5367': utils.dictGet(stack, 'gr_num')  # 高级软卧
         }
+
+        for key in list(filter(lambda k: contents[k] is None, contents)):
+            contents.pop(key)
+        return contents
 
     def __trainCodes(self, trains):
         codes = []
