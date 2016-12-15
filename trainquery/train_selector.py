@@ -1,13 +1,13 @@
-'''
-
-'''
-
+#!/usr/bin/env python3
+#
+# Copyright (C) 2016 ShadowMan
+#
 import copy
 import json
 import asyncio
+import logging
 from collections import namedtuple, OrderedDict
-from trainquery import utils
-from trainquery import train_query_result, train_station
+from trainquery import train_query_result, train_station, utils, config
 
 Seat = namedtuple('Seat', 'name stack price')
 
@@ -15,127 +15,142 @@ class PriceException(Exception):
     pass
 
 class TrainSelector(object):
-    __queryStackUrl = 'https://kyfw.12306.cn/otn/lcxxcx/query'
-    __queryTrainPrice = 'https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice'
-    __queryAllStations = 'https://kyfw.12306.cn/otn/czxx/queryByTrainNo'
 
-    def __init__(self, trainInformation, *, loop = asyncio.get_event_loop()):
-        self.__loop = loop
+    def __init__(self, train_information, *, loop = None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.__async_loop = loop
 
         try:
-            self.__profile = trainInformation['train']
-            self.__purchase = trainInformation['purchase']
-            self.__station = trainInformation['station']
-            self.__seatType = trainInformation['seatType']
-            self.__time = trainInformation['time']
-            self.__stack = trainInformation['stack']
-            self.__allStations = []
-            self.__price = {}
-            self.__date = trainInformation['other'][0]
-            self.__passenger = trainInformation['other'][1]
+            self.__seats_price = {}
+            self.__pass_all_stations = []
+            self.__train_profile = train_information['train']
+            self.__purchase_flag = train_information['purchase']
+            self.__endpoint_station = train_information['station']
+            self.__seat_type = train_information['seatType']
+            self.__time_information = train_information['time']
+            self.__stack_information = train_information['stack']
+            self.__start_date = train_information['other'][0]
+            self.__passenger = train_information['other'][1]
         except KeyError:
+            logging.error('TrainSelector constructor parameter invalid')
             raise TypeError('train information format error')
 
     async def seat(self, *, name = None, handle = None, all = False, filter = True):
-        if not self.__price:
-            self.__price = await self.__initPrice()
+        while not self.__seats_price:
+            self.__seats_price = await self.__init__seat_price()
 
         if all is True:
             results = []
-            for name in self.__stack:
-                results.append(Seat(name, self.__stack[name], self.__price[name]))
-            return results
-
-        if name is not None and name in self.__stack and name in self.__price:
+            try:
+                for name in self.__stack_information:
+                    results.append(Seat(name, self.__stack_information[name], self.__seats_price[name]))
+                return results
+            except KeyError:
+                logging.error('seat error {} {}'.format(self.__stack_information, self.__seats_price))
+                raise
+        if name is not None and name in self.__stack_information and name in self.__seats_price:
             if handle is None:
-                return Seat(name, self.__stack[name], self.__price[name])
+                return Seat(name, self.__stack_information[name], self.__seats_price[name])
             elif callable(handle):
-                handle(Seat(name, self.__stack[name], self.__price[name]))
+                if asyncio.iscoroutine(handle):
+                    await handle(Seat(name, self.__stack_information[name], self.__seats_price[name]))
+                else:
+                    handle(Seat(name, self.__stack_information[name], self.__seats_price[name]))
+            else:
+                raise TypeError('seat handle invalid')
         else:
             if handle is None:
                 return Seat(None, None, None)
             elif callable(handle):
-                handle(Seat(None, None, None))
+                if asyncio.iscoroutine(handle):
+                    await handle(Seat(name, self.__stack_information[name], self.__seats_price[name]))
+                else:
+                    handle(Seat(name, self.__stack_information[name], self.__seats_price[name]))
 
     async def check(self):
-        if self.purchase is True:
-            return train_query_result.TrainStation(self.start, self.end)
+        if self.purchase_flag is True:
+            return train_query_result.TrainStation(self.start_station, self.end_station)
 
-        if int(self.end.pos) - 1 == int(self.start.pos):
-            return train_query_result.TrainStation(None, None)
-
-        if not self.__allStations:
+        if not self.__pass_all_stations:
             try:
-                response = json.loads(await self.__initAllStations())
+                response = await self.__init_pass_all_stations()
 
                 for station in response['data']['data']:
-                    self.__allStations.append(train_query_result.Station(
+                    self.__pass_all_stations.append(train_query_result.Station(
                         station['station_name'], train_station.get(station['station_name']), station['station_no'])
                     )
             except KeyError:
-                print('TrainSelector::check error')
+                logging.error('TrainSelector.check error')
+                raise RuntimeError('TrainSelector.check internal error occurs')
 
-        for end in self.__stationRange(self.start, self.end):
-            if await self.__isPurchase(self.start.code, end.code, self.code) is True:
-                stack = await self.__getStackInformation(self.start.code, end.code, self.id)
-                price = self.__parsePriceResponse(
-                    await utils.getPriceInformation(self.__loop, self.id, self.start, end, self.__seatType, self.__date)
+        if len(self.__station_range(self.start_station, self.end_station)) == 0:
+            # Not an appropriate solution
+            return train_query_result.TrainStation(None, None)
+
+        for end in self.__station_range(self.start_station, self.end_station):
+            if await self.__check_purchase(self.start_station.code, end.code, self.code) is True:
+                stack = await self.__pick_stack_information(self.start_station.code, end.code, self.train_id)
+                price = self.__parse_seat_price(
+                    await utils.get_price_information(self.__async_loop, self.train_id,
+                                                      self.start_station, end,
+                                                      self.__seat_type, self.__start_date)
                 )
+
+                # Queries to the right programme
                 result = [ Seat(name, stack[name], price[name]) for name in stack ]
+                return train_query_result.TrainStation(self.start_station, end), result
+        raise Exception('check error, not query range {}'.format(self.__station_range(self.start_station, self.end_station)))
 
-                return train_query_result.TrainStation(self.start, end), result
+    async def __init__seat_price(self):
+        response = await utils.get_price_information(self.__async_loop,self.train_id,
+                                                     self.start_station, self.end_station,
+                                                     self.seat_type, self.start_date)
+        return self.__parse_seat_price(response)
 
-    async def __initPrice(self):
-        response = await utils.getPriceInformation(self.__loop, self.id, self.start, self.end, self.seatType, self.date)
-        try:
-            return self.__parsePriceResponse(response)
-        except TypeError:
-            print('__initPrice error')
-
-    def __parsePriceResponse(self, response):
-        try:
-            contents = json.loads(response)['data']
-        except KeyError:
-            raise PriceException('response format error')
+    def __parse_seat_price(self, response):
+        response = response['data']
 
         contents = {
-            '\u5546\u52a1': utils.dictGet(contents, 'A9'), # 商务
-            '\u4e00\u7b49\u5ea7': utils.dictGet(contents, 'M'), # 一等座
-            '\u4e8c\u7b49\u5ea7': utils.dictGet(contents, 'O'), # 二等座
-            '\u65e0\u5ea7': utils.dictGet(contents, 'WZ'), # 无座
-            '\u786c\u5ea7': utils.dictGet(contents, 'A1'), # 硬座
-            '\u8f6f\u5ea7': utils.dictGet(contents, 'A2'), # 软座
-            '\u786c\u5367': utils.dictGet(contents, 'A3'), # 硬卧
-            '\u8f6f\u5367': utils.dictGet(contents, 'A4'), # 软卧
-            '\u9ad8\u7ea7\u8f6f\u5367': utils.dictGet(contents, 'A6') # 高级软卧
+            '\u5546\u52a1': utils.from_dict_get(response, 'A9'), # 商务
+            '\u4e00\u7b49\u5ea7': utils.from_dict_get(response, 'M'), # 一等座
+            '\u4e8c\u7b49\u5ea7': utils.from_dict_get(response, 'O'), # 二等座
+            '\u65e0\u5ea7': utils.from_dict_get(response, 'WZ'), # 无座
+            '\u786c\u5ea7': utils.from_dict_get(response, 'A1'), # 硬座
+            '\u8f6f\u5ea7': utils.from_dict_get(response, 'A2'), # 软座
+            '\u786c\u5367': utils.from_dict_get(response, 'A3'), # 硬卧
+            '\u8f6f\u5367': utils.from_dict_get(response, 'A4'), # 软卧
+            '\u9ad8\u7ea7\u8f6f\u5367': utils.from_dict_get(response, 'A6') # 高级软卧
         }
 
         for key in list(filter(lambda k: contents[k] is None, contents)):
             contents.pop(key)
         return contents
 
-    async def __initAllStations(self):
+    async def __init_pass_all_stations(self):
         payload = OrderedDict([
-            ('train_no', self.id),
-            ('from_station_telecode', self.start.code),
-            ('to_station_telecode', self.end.code),
-            ('depart_date', self.date)
+            ('train_no', self.train_id),
+            ('from_station_telecode', self.start_station.code),
+            ('to_station_telecode', self.end_station.code),
+            ('depart_date', self.start_date)
         ])
-        return await utils.fetch(self.__loop, url = self.__queryAllStations, params = payload)
+        return await utils.fetch_json(self.__async_loop, url = config.QUERY_ALL_STATIONS, params = payload)
 
-    async def __isPurchase(self, fromStation, toStation, trainCode):
-        response = await utils.getTrainInformation(self.__loop, fromStation, toStation, self.__date, self.__passenger)
+    async def __check_purchase(self, from_station, to_station, train_code):
+        response = await utils.get_train_information(self.__async_loop, from_station, to_station,
+                                                     self.__start_date, self.__passenger)
 
-        for train in json.loads(response)['data']:
-            if train['queryLeftNewDTO']['station_train_code'] == trainCode:
+        for train in response['data']:
+            if train['queryLeftNewDTO']['station_train_code'] == train_code:
                 return train['queryLeftNewDTO']['canWebBuy'] == 'Y'
         else:
-            raise TypeError('trainCode not found, fatal error')
+            logging.error('fatal error: train_code not found {} {} {} {}'.format(response, from_station, to_station, train_code))
+            raise TypeError('fatal error: train_code not found')
 
-    def __stationRange(self, start, end):
-        available = copy.copy(self.__allStations)
+    def __station_range(self, start, end):
+        available = copy.copy(self.__pass_all_stations)
 
-        for station in self.__allStations:
+        for station in self.__pass_all_stations:
             if station.code == start.code:
                 break
             available.pop(0)
@@ -150,28 +165,28 @@ class TrainSelector(object):
 
         return available
 
-    async def __getStackInformation(self, fromStation, toStation, trainId):
-        stacks = await utils.getStackInformation(self.__loop, fromStation, toStation, self.__date, self.__passenger)
+    async def __pick_stack_information(self, from_station, to_station, train_id):
+        stacks = await utils.get_stack_information(self.__async_loop, from_station, to_station, self.__start_date, self.__passenger)
         try:
-            stacks = json.loads(stacks)['data']['datas']
+            stacks = stacks['data']['datas']
         except KeyError:
             print('TrainSelector::__parseStackInformation error')
 
         stack = None
-        for trainCode in stacks:
-            if trainCode['train_no'] == trainId:
-                stack = trainCode
+        for current_stack in stacks:
+            if current_stack['train_no'] == train_id:
+                stack = current_stack
                 break
         contents = {
-            '\u5546\u52a1': utils.dictGet(stack, 'swz_num'),  # 商务
-            '\u4e00\u7b49\u5ea7': utils.dictGet(stack, 'zy_num'),  # 一等座
-            '\u4e8c\u7b49\u5ea7': utils.dictGet(stack, 'ze_num'),  # 二等座
-            '\u65e0\u5ea7': utils.dictGet(stack, 'wz_num'),  # 无座
-            '\u786c\u5ea7': utils.dictGet(stack, 'yz_num'),  # 硬座
-            '\u8f6f\u5ea7': utils.dictGet(stack, 'rz_num'),  # 软座
-            '\u786c\u5367': utils.dictGet(stack, 'yw_num'),  # 硬卧
-            '\u8f6f\u5367': utils.dictGet(stack, 'rw_num'),  # 软卧
-            '\u9ad8\u7ea7\u8f6f\u5367': utils.dictGet(stack, 'gr_num')  # 高级软卧
+            '\u5546\u52a1': utils.from_dict_get(stack, 'swz_num'),  # 商务
+            '\u4e00\u7b49\u5ea7': utils.from_dict_get(stack, 'zy_num'),  # 一等座
+            '\u4e8c\u7b49\u5ea7': utils.from_dict_get(stack, 'ze_num'),  # 二等座
+            '\u65e0\u5ea7': utils.from_dict_get(stack, 'wz_num'),  # 无座
+            '\u786c\u5ea7': utils.from_dict_get(stack, 'yz_num'),  # 硬座
+            '\u8f6f\u5ea7': utils.from_dict_get(stack, 'rz_num'),  # 软座
+            '\u786c\u5367': utils.from_dict_get(stack, 'yw_num'),  # 硬卧
+            '\u8f6f\u5367': utils.from_dict_get(stack, 'rw_num'),  # 软卧
+            '\u9ad8\u7ea7\u8f6f\u5367': utils.from_dict_get(stack, 'gr_num')  # 高级软卧
         }
 
         for key in list(filter(lambda k: contents[k] is None, contents)):
@@ -180,48 +195,48 @@ class TrainSelector(object):
 
     @property
     def code(self):
-        return self.__profile.code
+        return self.__train_profile.code
 
     @property
-    def id(self):
-        return self.__profile.id
+    def train_id(self):
+        return self.__train_profile.id
 
     @property
-    def purchase(self):
-        return self.__purchase
+    def purchase_flag(self):
+        return self.__purchase_flag
 
     @property
-    def start(self):
-        return self.__station.start
+    def start_station(self):
+        return self.__endpoint_station.start
 
     @property
-    def end(self):
-        return self.__station.end
+    def end_station(self):
+        return self.__endpoint_station.end
 
     @property
-    def seatType(self):
-        return self.__seatType
+    def seat_type(self):
+        return self.__seat_type
 
     @property
-    def startTime(self):
-        return self.__time.start
+    def start_time(self):
+        return self.__time_information.start
 
     @property
-    def arriveTime(self):
-        return self.__time.arrive
+    def arrive_time(self):
+        return self.__time_information.arrive
 
     @property
-    def totalTime(self):
-        return self.__time.total
+    def total_time(self):
+        return self.__time_information.total
 
     @property
-    def allStations(self):
-        return self.__allStations
+    def all_stations(self):
+        return self.__pass_all_stations
 
     @property
-    def date(self):
-        return self.__date
+    def start_date(self):
+        return self.__start_date
 
     @property
-    def isStudent(self):
-        return not self.__passenger == 'ADULT'
+    def is_student(self):
+        return self.__passenger == config.PASSENGER_STUDENT
