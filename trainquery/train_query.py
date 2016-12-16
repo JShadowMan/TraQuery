@@ -22,7 +22,7 @@ class TrainQuery(object):
 
         train_station.init(self.__async_loop)
 
-    async def query(self, from_station, to_station, date, is_student = False, *, future = None):
+    async def query(self, from_station, to_station, date, is_student = False, *, result_handle = None):
         if not isinstance(date, (int, float)):
             raise TypeError('date must be unix stamp, not %s' % type(date).__name__)
 
@@ -49,16 +49,19 @@ class TrainQuery(object):
         if is_student is True:
             passenger_type = config.PASSENGER_STUDENT
 
-        if future is None:
+        if result_handle is None:
             return await self.__query_train(from_station, to_station, date, passenger_type)
-        elif isinstance(future, asyncio.Future):
-            future.set_result(await self.__query_train(from_station, to_station, date, passenger_type))
+        elif asyncio.iscoroutinefunction(result_handle):
+            await result_handle(await self.__query_train(from_station, to_station, date, passenger_type))
+        elif callable(result_handle):
+            result_handle(await self.__query_train(from_station, to_station, date, passenger_type))
 
     async def __query_train(self, from_station, to_station, date, passenger_type):
         train_information = await utils.get_train_information(self.__async_loop, from_station, to_station, date, passenger_type)
         stack_information = await utils.get_stack_information(self.__async_loop, from_station, to_station, date, passenger_type)
 
         try:
-            return train_query_result.ResultParser(train_information, stack_information, date, passenger_type, loop = self.__async_loop)
+            return train_query_result.ResultParser(train_information, stack_information, date, passenger_type)
         except Exception as e:
             logging.error('TrainQuery.__query_train error occurs {}'.format(e.args[0]))
+            raise

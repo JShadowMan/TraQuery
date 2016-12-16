@@ -41,7 +41,7 @@ class ResultParser(object):
             raise RuntimeError('train code not found in train list')
 
     def get_trains_code(self):
-        return self.__trains_info.get('trains', {}).keys()
+        return list(self.__trains_info.get('trains', {}).keys())
 
     def __pick_train_code(self, train):
         return train.get('queryLeftNewDTO', {}).get('station_train_code')

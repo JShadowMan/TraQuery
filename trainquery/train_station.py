@@ -10,7 +10,6 @@ import asyncio
 import logging
 from trainquery import utils
 
-
 class TrainStation(dict):
 
     __get_station_version_url = 'https://kyfw.12306.cn/otn/index/init'
@@ -23,10 +22,13 @@ class TrainStation(dict):
 
         asyncio.set_event_loop(self.__async_loop)
         self.__async_loop.run_until_complete(self.__get_station_version())
+        logging.debug('train_station.__init__ fetch new station_version={}'.format(self.__station_version))
 
         if os.path.isfile('station_{}.pkl'.format(self.__station_version)):
+            logging.debug('train_station.__init__ cache file exists, load cache file')
             super(TrainStation, self).__init__(self.__load_stations())
         else:
+            logging.debug('train_station.__init__ cache file non-exists, get new station list')
             self.__async_loop.run_until_complete(self.__init_train_station_list())
             super(TrainStation, self).__init__(self.__station_list)
             self.__dump_station_list(self.__station_list)

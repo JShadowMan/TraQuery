@@ -16,19 +16,36 @@ def async_startup(async_loop, *task):
     if len(task) == 1 and isinstance(task[0], list):
         logging.warning('task is a single list')
         task = task[0]
-    async_loop.run_until_complete(asyncio.gather(*task))
-    while asyncio.Task.all_tasks():  # pending
-        async_loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+    results = async_loop.run_until_complete(asyncio.gather(*task))
+    # while asyncio.Task.all_tasks():  # pending
+    #     async_loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
     async_loop.run_until_complete(clean())
+    return results
+
+def async_foreach(foreach_handle, *task, args = None, async_loop = None):
+    if not callable(foreach_handle) and not asyncio.iscoroutinefunction(foreach_handle):
+        raise TypeError('foreach_handle is not callable')
+    if not isinstance(args, (tuple, list)):
+        raise TypeError('args must be tuple or list')
+    if async_loop is None:
+        async_loop = asyncio.get_event_loop()
+    results = async_startup(async_loop, *task)
+    if asyncio.iscoroutinefunction(foreach_handle):
+        async_startup(async_loop, foreach_handle(results, *args))
+    elif callable(foreach_handle):
+        foreach_handle(results, *args)
 
 async def fetch(loop, *args, **kwargs):
     global _async_loop, _async_client_session
     if loop != _async_loop:
         _async_loop = loop
         if _async_client_session is not None:
+            logging.debug('utils.fetch close useless session_client')
             await _async_client_session.close()
+        logging.debug('utils.fetch start new session_client')
         _async_client_session = aiohttp.ClientSession(loop = _async_loop, connector = aiohttp.TCPConnector(verify_ssl = False))
     try:
+        logging.debug('utils.fetch: args={} kwargs={}'.format(args, kwargs))
         async with _async_client_session.get(*args, **kwargs) as response:
             if response.status is 200:
                 return await response.text()

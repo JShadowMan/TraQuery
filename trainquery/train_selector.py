@@ -40,7 +40,7 @@ class TrainSelector(object):
         while not self.__seats_price:
             self.__seats_price = await self.__init__seat_price()
 
-        if all is True:
+        if name is None or all is True:
             results = []
             try:
                 for name in self.__stack_information:
@@ -89,7 +89,7 @@ class TrainSelector(object):
             return train_query_result.TrainStation(None, None)
 
         for end in self.__station_range(self.start_station, self.end_station):
-            if await self.__check_purchase(self.start_station.code, end.code, self.code) is True:
+            if await self.__check_purchase(self.start_station.code, end.code, self.train_code) is True:
                 stack = await self.__pick_stack_information(self.start_station.code, end.code, self.train_id)
                 price = self.__parse_seat_price(
                     await utils.get_price_information(self.__async_loop, self.train_id,
@@ -100,7 +100,9 @@ class TrainSelector(object):
                 # Queries to the right programme
                 result = [ Seat(name, stack[name], price[name]) for name in stack ]
                 return train_query_result.TrainStation(self.start_station, end), result
-        raise Exception('check error, not query range {}'.format(self.__station_range(self.start_station, self.end_station)))
+        # raise Exception('check error, not query range {}'.format(self.__station_range(self.start_station, self.end_station)))
+        logging.info('not query range {}'.format(self.__station_range(self.start_station, self.end_station)))
+        return train_query_result.TrainStation(None, None)
 
     async def __init__seat_price(self):
         response = await utils.get_price_information(self.__async_loop,self.train_id,
@@ -137,8 +139,10 @@ class TrainSelector(object):
         return await utils.fetch_json(self.__async_loop, url = config.QUERY_ALL_STATIONS, params = payload)
 
     async def __check_purchase(self, from_station, to_station, train_code):
-        response = await utils.get_train_information(self.__async_loop, from_station, to_station,
-                                                     self.__start_date, self.__passenger)
+        response = None
+        while response is None:
+            response = await utils.get_train_information(self.__async_loop, from_station, to_station,
+                                                         self.__start_date, self.__passenger)
 
         for train in response['data']:
             if train['queryLeftNewDTO']['station_train_code'] == train_code:
@@ -147,6 +151,7 @@ class TrainSelector(object):
             logging.error('fatal error: train_code not found {} {} {} {}'.format(response, from_station, to_station, train_code))
             raise TypeError('fatal error: train_code not found')
 
+    # TODO. Station-wide seems to have problems
     def __station_range(self, start, end):
         available = copy.copy(self.__pass_all_stations)
 
@@ -194,7 +199,7 @@ class TrainSelector(object):
         return contents
 
     @property
-    def code(self):
+    def train_code(self):
         return self.__train_profile.code
 
     @property
