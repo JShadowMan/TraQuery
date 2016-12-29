@@ -3,6 +3,9 @@
 # Copyright (C) 2016 ShadowMan
 #
 
+# Number of retries
+RETRIES_TIME = 5
+
 # Passenger is adult
 PASSENGER_ADULT = 'ADULT'
 

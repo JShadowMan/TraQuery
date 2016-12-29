@@ -15,15 +15,14 @@ InvalidTrain = namedtuple('InvalidTrain', 'code endpoint')
 
 class ResultParser(object):
 
-    def __init__(self, trains, stacks, date, passenger_type, *, loop = None):
+    def __init__(self, trains, date, passenger_type, *, loop = None):
         self.__date = date
         self.__trains_info = {'train_count': None, 'trains': {}}
         self.__invalid_trains_info = {}
         self.__passenger_type = passenger_type
 
-        stacks = stacks['data']['datas']
         for train in trains.get('data', {}):
-            train_info = self.__package_train_info(train, stacks)
+            train_info = self.__package_train_info(train)
             if isinstance(train_info, dict):
                 self.__trains_info['trains'][ self.__pick_train_code(train) ] = train_info
             else:
@@ -61,7 +60,7 @@ class ResultParser(object):
             )
         )
 
-    def __package_train_info(self, train, stacks):
+    def __package_train_info(self, train):
         information = {}
 
         if train.get('queryLeftNewDTO').get('canWebBuy') == config.IN_TIME_NOT_BUY:
@@ -94,7 +93,7 @@ class ResultParser(object):
         # Price Information
         information['price'] = None
         # Seat Stack Information
-        information['stack'] = self.__pick_stack_information(stacks, train['train_no'])
+        information['stack'] = self.__pick_stack_information(train)
         # all stations
         information['stations'] = None
         # date, passengerType
@@ -102,22 +101,17 @@ class ResultParser(object):
 
         return information
 
-    def __pick_stack_information(self, stacks, train_id):
-        stack = None
-        for current_stack in stacks:
-            if current_stack['train_no'] == train_id:
-                stack = current_stack
-                break
+    def __pick_stack_information(self, train):
         contents = {
-            '\u5546\u52a1': utils.from_dict_get(stack, 'swz_num'),  # 商务
-            '\u4e00\u7b49\u5ea7': utils.from_dict_get(stack, 'zy_num'),  # 一等座
-            '\u4e8c\u7b49\u5ea7': utils.from_dict_get(stack, 'ze_num'),  # 二等座
-            '\u65e0\u5ea7': utils.from_dict_get(stack, 'wz_num'),  # 无座
-            '\u786c\u5ea7': utils.from_dict_get(stack, 'yz_num'),  # 硬座
-            '\u8f6f\u5ea7': utils.from_dict_get(stack, 'rz_num'),  # 软座
-            '\u786c\u5367': utils.from_dict_get(stack, 'yw_num'),  # 硬卧
-            '\u8f6f\u5367': utils.from_dict_get(stack, 'rw_num'),  # 软卧
-            '\u9ad8\u7ea7\u8f6f\u5367': utils.from_dict_get(stack, 'gr_num')  # 高级软卧
+            '\u5546\u52a1': utils.from_dict_get(train, 'swz_num'),  # 商务
+            '\u4e00\u7b49\u5ea7': utils.from_dict_get(train, 'zy_num'),  # 一等座
+            '\u4e8c\u7b49\u5ea7': utils.from_dict_get(train, 'ze_num'),  # 二等座
+            '\u65e0\u5ea7': utils.from_dict_get(train, 'wz_num'),  # 无座
+            '\u786c\u5ea7': utils.from_dict_get(train, 'yz_num'),  # 硬座
+            '\u8f6f\u5ea7': utils.from_dict_get(train, 'rz_num'),  # 软座
+            '\u786c\u5367': utils.from_dict_get(train, 'yw_num'),  # 硬卧
+            '\u8f6f\u5367': utils.from_dict_get(train, 'rw_num'),  # 软卧
+            '\u9ad8\u7ea7\u8f6f\u5367': utils.from_dict_get(train, 'gr_num')  # 高级软卧
         }
 
         for key in list(filter(lambda k: contents[k] is None, contents)):

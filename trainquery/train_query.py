@@ -57,11 +57,13 @@ class TrainQuery(object):
             result_handle(await self.__query_train(from_station, to_station, date, passenger_type))
 
     async def __query_train(self, from_station, to_station, date, passenger_type):
-        train_information = await utils.get_train_information(self.__async_loop, from_station, to_station, date, passenger_type)
-        stack_information = await utils.get_stack_information(self.__async_loop, from_station, to_station, date, passenger_type)
-
+        train_information = None
+        while train_information is None:
+            train_information = await utils.get_train_information(self.__async_loop,
+                                                                  from_station, to_station,
+                                                                  date, passenger_type)
         try:
-            return train_query_result.ResultParser(train_information, stack_information, date, passenger_type)
+            return train_query_result.ResultParser(train_information, date, passenger_type)
         except Exception as e:
             logging.error('TrainQuery.__query_train error occurs {}'.format(e.args[0]))
             raise

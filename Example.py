@@ -6,18 +6,9 @@ import random
 import asyncio
 import logging
 import cProfile
-from trainquery import train_query, utils, train_selector, train_query_result
+from trainquery import train_query, utils, train_selector, train_query_result, exceptions
 
 logging.basicConfig(level = logging.INFO)
-
-# async def foreach_results(result):
-#     if isinstance(result, train_query_result.ResultParser):
-#         select_train_code = random.choice(result.get_trains_code())
-#         selector = result.select(select_train_code)
-#
-#         print(selector.train_code, selector.start_time, selector.arrive_time, selector.total_time, selector.start_station, selector.end_station)
-#         print('\t', selector.train_code, await selector.seat())
-#         print('\t\t', selector.train_code, await selector.check())
 
 async def foreach_train(result):
     if isinstance(result, train_query_result.ResultParser):
@@ -25,9 +16,11 @@ async def foreach_train(result):
             selector = result.select(train_code)
 
             print(selector.train_code, selector.start_time, selector.arrive_time, selector.total_time, selector.start_station, selector.end_station)
-            print('\t', selector.train_code, await selector.seat())
+            try:
+                print('\t', selector.train_code, await selector.seat())
+            except exceptions.ReTryExceed as e:
+                logging.info('query seat retry count exceeded. ignore this train[{}]'.format(selector.train_code))
             print('\t\t', selector.train_code, await selector.check())
-
 
 loop = asyncio.get_event_loop()
 loop.set_debug(True)

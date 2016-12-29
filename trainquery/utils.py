@@ -6,7 +6,7 @@ import json
 import aiohttp
 import asyncio
 import logging
-from trainquery import config
+from trainquery import config, exceptions
 from collections import OrderedDict
 
 _async_loop = None
@@ -45,11 +45,12 @@ async def fetch(loop, *args, **kwargs):
         logging.debug('utils.fetch start new session_client')
         _async_client_session = aiohttp.ClientSession(loop = _async_loop, connector = aiohttp.TCPConnector(verify_ssl = False))
     try:
-        logging.debug('utils.fetch: args={} kwargs={}'.format(args, kwargs))
         async with _async_client_session.get(*args, **kwargs) as response:
             if response.status is 200:
                 return await response.text()
             else:
+                if (response.status == 403):
+                    raise exceptions.NetworkForbidden('request error response.status = {}'.format(response.status))
                 raise Exception('request error response.status = {}'.format(response.status))
     except Exception as e:
         logging.error('utils.fetch error occurs: {}'.format(e.args[0]))
@@ -100,25 +101,36 @@ async def get_train_information(loop, from_station, to_station, date, passenger_
     else:
         return response
 
-async def get_stack_information(loop, from_station, to_station, date, passenger_type):
+async def get_stack_information(loop, from_station, to_station, date, passenger_type, train_id):
     payload = OrderedDict([
         ('purpose_codes', passenger_type),
         ('queryDate', date),
         ('from_station', from_station),
         ('to_station', to_station)
     ])
-    response = await fetch_json(loop, url = config.QUERY_STACK_URL, params = payload)
+    response = {}
+    try:
+        response = await fetch_json(loop, url = config.QUERY_STACK_URL, params = payload)
+        if 'status' in response and response['status'] is False:
+            if 'c_url' in response:
+                try:
+                    new_query_url = config.QUERY_BASE_URL + response['c_url']
+                    response = await fetch_json(loop, url=new_query_url, params=payload)
+                except Exception as e:
+                    logging.error('utils.get_train_information error occurs {}'.format(e.args[0]))
+                    raise RuntimeError('utils.get_train_information error occurs')
+    except exceptions.NetworkForbidden:
+        response = await get_train_information(loop, from_station, to_station, date, passenger_type)
 
-    if 'status' in response and response['status'] is False:
-        if 'c_url' in response:
-            try:
-                new_query_url = config.QUERY_BASE_URL + response['c_url']
-                return await fetch_json(loop, url = new_query_url, params = payload)
-            except Exception as e:
-                logging.error('utils.get_train_information error occurs {}'.format(e.args[0]))
-                raise RuntimeError('utils.get_train_information error occurs')
-    else:
-        return response
+        for train in response.get('data', {}):
+            if response[train].get('queryLeftNewDTO', {}).get('train_no') == train_id:
+                response = response[train].get('queryLeftNewDTO', {})
+                return response
+    try:
+        response = response['data']['datas']
+    except KeyError:
+        print('TrainSelector::__parseStackInformation error')
+    return response
 
 async def get_price_information(loop, train_id, start_station, end_station, seat_type, date):
     payload = OrderedDict([

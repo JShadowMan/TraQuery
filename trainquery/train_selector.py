@@ -7,7 +7,8 @@ import json
 import asyncio
 import logging
 from collections import namedtuple, OrderedDict
-from trainquery import train_query_result, train_station, utils, config
+from trainquery import train_query_result, train_station, utils, config, \
+    exceptions
 
 Seat = namedtuple('Seat', 'name stack price')
 
@@ -41,14 +42,18 @@ class TrainSelector(object):
             self.__seats_price = await self.__init__seat_price()
 
         if name is None or all is True:
-            results = []
-            try:
-                for name in self.__stack_information:
-                    results.append(Seat(name, self.__stack_information[name], self.__seats_price[name]))
-                return results
-            except KeyError:
-                logging.error('seat error {} {}'.format(self.__stack_information, self.__seats_price))
-                raise
+            for i in range(config.RETRIES_TIME):
+                results = []
+                try:
+                    for name in self.__stack_information:
+                        results.append(Seat(name, self.__stack_information[name], self.__seats_price[name]))
+                    return results
+                except KeyError:
+                    logging.warning('seat and stack not match, try again'.format(self.__stack_information, self.__seats_price))
+                    self.__seats_price = await self.__init__seat_price()
+            else:
+                logging.error('retry count exceeded, please try submit again')
+                raise exceptions.ReTryExceed('retry count exceeded, please try submit again')
         if name is not None and name in self.__stack_information and name in self.__seats_price:
             if handle is None:
                 return Seat(name, self.__stack_information[name], self.__seats_price[name])
@@ -80,6 +85,7 @@ class TrainSelector(object):
                     self.__pass_all_stations.append(train_query_result.Station(
                         station['station_name'], train_station.get(station['station_name']), station['station_no'])
                     )
+                print('DEBUG', self.__pass_all_stations)
             except KeyError:
                 logging.error('TrainSelector.check error')
                 raise RuntimeError('TrainSelector.check internal error occurs')
@@ -171,11 +177,9 @@ class TrainSelector(object):
         return available
 
     async def __pick_stack_information(self, from_station, to_station, train_id):
-        stacks = await utils.get_stack_information(self.__async_loop, from_station, to_station, self.__start_date, self.__passenger)
-        try:
-            stacks = stacks['data']['datas']
-        except KeyError:
-            print('TrainSelector::__parseStackInformation error')
+        stacks = await utils.get_stack_information(self.__async_loop,
+                                                   from_station, to_station, self.__start_date,
+                                                   self.__passenger, train_id)
 
         stack = None
         for current_stack in stacks:
