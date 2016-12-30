@@ -6,8 +6,9 @@ import json
 import aiohttp
 import asyncio
 import logging
-from trainquery import config, exceptions
+from urllib.parse import urljoin
 from collections import OrderedDict
+from trainquery import config, exceptions
 
 _async_loop = None
 _async_client_session = None
@@ -73,13 +74,13 @@ async def clean():
 async def fetch_json(loop, *args, **kwargs):
     try:
         response = await fetch(loop, *args, **kwargs)
-
         return json.loads(response)
-    except Exception as e:
-        if '403' in e.args[0]:
-            await asyncio.sleep(1)
-            logging.error('utils.fetch_json error occurs: {}'.format(e.args[0]))
-            return await fetch_json(loop, *args, **kwargs)
+    except exceptions.NetworkForbidden:
+        await asyncio.sleep(1)
+        logging.error('utils.fetch_json error occurs: 403 Forbidden')
+        return await fetch_json(loop, *args, **kwargs)
+    except Exception:
+        raise
 
 async def get_train_information(loop, from_station, to_station, date, passenger_type):
     payload = OrderedDict([
@@ -87,17 +88,19 @@ async def get_train_information(loop, from_station, to_station, date, passenger_
         ('leftTicketDTO.from_station', from_station),
         ('leftTicketDTO.to_station', to_station),
         ('purpose_codes', passenger_type)
-    ])  # **** 1*3*6
+    ])  # -v- Order Params
     response = await fetch_json(loop, url = config.QUERY_TRAIN_URL, params = payload)
 
     if 'status' in response and response['status'] is False:
         if 'c_url' in response:
             try:
-                new_query_url = config.QUERY_BASE_URL + response['c_url']
+                new_query_url = urljoin(config.QUERY_BASE_URL, response['c_url'])
                 return await fetch_json(loop, url = new_query_url, params = payload)
             except Exception as e:
                 logging.error('utils.get_train_information error occurs {}'.format(e.args[0]))
-                raise RuntimeError('utils.get_train_information error occurs')
+                raise
+        else:
+            raise RuntimeError('utils.get_train_information error occurs: unknown error')
     else:
         return response
 
@@ -137,7 +140,7 @@ async def get_price_information(loop, train_id, start_station, end_station, seat
         ('train_no', train_id),
         ('from_station_no', start_station.pos),
         ('to_station_no', end_station.pos),
-        ('seat_types', seat_type[0]),
+        ('seat_types', seat_type),
         ('train_date', date)
     ])
     return await fetch_json(loop, url = config.QUERY_PRICE_URL, params = payload)

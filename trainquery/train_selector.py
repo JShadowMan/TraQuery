@@ -25,14 +25,14 @@ class TrainSelector(object):
         try:
             self.__seats_price = {}
             self.__pass_all_stations = []
-            self.__train_profile = train_information['train']
-            self.__purchase_flag = train_information['purchase']
-            self.__endpoint_station = train_information['station']
-            self.__seat_type = train_information['seatType']
-            self.__time_information = train_information['time']
-            self.__stack_information = train_information['stack']
-            self.__start_date = train_information['other'][0]
-            self.__passenger = train_information['other'][1]
+            self.__train_profile = train_information.profile
+            self.__purchase_flag = train_information.purchase_flag
+            self.__endpoint_station = train_information.endpoint
+            self.__seat_type = train_information.seat_type
+            self.__time_information = train_information.time
+            self.__stack_information = train_information.stack
+            self.__start_date = train_information.date
+            self.__passenger = train_information.passenger_type
         except KeyError:
             logging.error('TrainSelector constructor parameter invalid')
             raise TypeError('train information format error')
@@ -49,7 +49,7 @@ class TrainSelector(object):
                         results.append(Seat(name, self.__stack_information[name], self.__seats_price[name]))
                     return results
                 except KeyError:
-                    logging.warning('seat and stack not match, try again'.format(self.__stack_information, self.__seats_price))
+                    logging.warning('seat and stack not match, try again')
                     self.__seats_price = await self.__init__seat_price()
             else:
                 logging.error('retry count exceeded, please try submit again')
@@ -83,6 +83,7 @@ class TrainSelector(object):
 
                 for station in response['data']['data']:
                     self.__pass_all_stations.append(train_query_result.Station(
+                        # name code pos
                         station['station_name'], train_station.get(station['station_name']), station['station_no'])
                     )
                 print('DEBUG', self.__pass_all_stations)
@@ -90,22 +91,24 @@ class TrainSelector(object):
                 logging.error('TrainSelector.check error')
                 raise RuntimeError('TrainSelector.check internal error occurs')
 
-        if len(self.__station_range(self.start_station, self.end_station)) == 0:
+        available_station_range = self.__station_range(self.start_station, self.end_station)
+        if len(available_station_range) == 0:
             # Not an appropriate solution
             return train_query_result.TrainStation(None, None)
 
-        for end in self.__station_range(self.start_station, self.end_station):
-            if await self.__check_purchase(self.start_station.code, end.code, self.train_code) is True:
-                stack = await self.__pick_stack_information(self.start_station.code, end.code, self.train_id)
+        for last_station in available_station_range:
+            current_plan_purchase = await self.__check_purchase(self.start_station.code, last_station.code, self.train_code)
+            if current_plan_purchase is True:
+                stack = await self.__pick_stack_information(self.start_station.code, last_station.code, self.train_id)
                 price = self.__parse_seat_price(
                     await utils.get_price_information(self.__async_loop, self.train_id,
-                                                      self.start_station, end,
+                                                      self.start_station, last_station,
                                                       self.__seat_type, self.__start_date)
                 )
 
                 # Queries to the right programme
                 result = [ Seat(name, stack[name], price[name]) for name in stack ]
-                return train_query_result.TrainStation(self.start_station, end), result
+                return train_query_result.TrainStation(self.start_station, last_station), result
         # raise Exception('check error, not query range {}'.format(self.__station_range(self.start_station, self.end_station)))
         logging.info('not query range {}'.format(self.__station_range(self.start_station, self.end_station)))
         return train_query_result.TrainStation(None, None)

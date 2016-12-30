@@ -81,7 +81,8 @@ __single_instance = None
 
 def init(async_loop):
     global __single_instance
-    __single_instance = TrainStation(loop = async_loop)
+    if __single_instance is None:
+        __single_instance = TrainStation(loop = async_loop)
 
 def get(station):
     global __single_instance

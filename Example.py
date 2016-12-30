@@ -20,7 +20,7 @@ async def foreach_train(result):
                 print('\t', selector.train_code, await selector.seat())
             except exceptions.ReTryExceed as e:
                 logging.info('query seat retry count exceeded. ignore this train[{}]'.format(selector.train_code))
-            print('\t\t', selector.train_code, await selector.check())
+            # print('\t\t', selector.train_code, await selector.check())
 
 loop = asyncio.get_event_loop()
 loop.set_debug(True)
@@ -28,7 +28,7 @@ loop.set_debug(True)
 query = train_query.TrainQuery()
 
 task = [
-    asyncio.ensure_future(query.query('北京', '南京', int(time.time()) + 3600 * 24, result_handle = foreach_train), loop = loop),
+    asyncio.ensure_future(query.query('北京', '南京', int(time.time()) + 3600 * 24, result_handler= foreach_train), loop = loop),
     # asyncio.ensure_future(query.query('北京', '南京', int(time.time()) + 3600 * 24, result_handle = foreach_results), loop = loop),
     # asyncio.ensure_future(query.query('北京', '南京', int(time.time()) + 3600 * 24, result_handle = foreach_results), loop = loop)
 ]

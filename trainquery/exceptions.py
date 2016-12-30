@@ -9,3 +9,8 @@ class ReTryExceed(RuntimeError):
 class NetworkForbidden(RuntimeError):
     pass
 
+class StationError(Exception):
+    pass
+
+class InvalidTrain(Exception):
+    pass
