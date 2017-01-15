@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 #
-# Copyright (C) 2016 ShadowMan
+# Copyright (C) 2016-2017 ShadowMan
 #
 import asyncio
 from collections import namedtuple

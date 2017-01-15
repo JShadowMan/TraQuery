@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/us/bin/env python3
 #
-# Copyright (C) 2016 ShadowMan
+# Copyright (C) 2016-2017 ShadowMan
 #
 import os
 import re

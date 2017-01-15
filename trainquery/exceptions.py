@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (C) 2016 ShadowMan
+# Copyright (C) 2016-2017 ShadowMan
 #
 
 class ReTryExceed(RuntimeError):
