@@ -9,5 +9,5 @@
 from setuptools import setup
 
 setup(
-    name = 'trainquery'
+    name = 'train-query'
 )
