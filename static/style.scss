@@ -158,30 +158,59 @@ header {
         }
       }
 
+      button {
+        padding: .5rem;
+        font-family: 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
+        font-style: italic;
+      }
+
       .train-query-submit {
-        display: inline-block;
-        padding: .375rem 1rem;
-        font-size: 1.4rem;
-        font-weight: normal;
-        line-height: 1.5;
-        text-align: center;
-        white-space: nowrap;
-        vertical-align: middle;
-        cursor: pointer;
-        @include prefix(user-select, none);
-        border: 1px solid transparent;
-        border-radius: .25rem;
-        transition-property: background, border;
-        transition-duration: .35s;
+        letter-spacing: 1px;
+      }
 
-        color: #333;
-        background-color: #fff;
-        border-color: #ccc;
+      @at-root {
+        .widget-btn {
+          display: inline-block;
+          padding: .375rem 1rem;
+          font-size: 1.4rem;
+          font-weight: normal;
+          line-height: 1.5;
+          text-align: center;
+          white-space: nowrap;
+          vertical-align: middle;
+          cursor: pointer;
+          @include prefix(user-select, none);
+          border: 1px solid transparent;
+          border-radius: .25rem;
+          transition-property: background, border;
+          transition-duration: .35s;
 
-        &:focus, &:active:focus {
-          outline: thin dotted;
-          outline: 5px auto -webkit-focus-ring-color;
-          outline-offset: -2px;
+          &:focus, &:active:focus, &:hover {
+            text-decoration: none;
+            outline: thin dotted;
+            outline: 5px auto -webkit-focus-ring-color;
+            outline-offset: -2px;
+          }
+          &:active {
+            background-image: none;
+            outline: 0;
+          }
+          &:disabled, .widget-btn.disabled {
+            cursor: not-allowed;
+            opacity: .65;
+          }
+        }
+
+        .widget-btn-default {
+          color: #333;
+          background-color: #fff;
+          border-color: #ccc;
+
+          &:hover {
+            color: #333;
+            background-color: #e6e6e6;
+            border-color: #adadad;
+          }
         }
       }
     }

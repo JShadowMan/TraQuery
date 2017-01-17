@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="static/style.css">
     <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
     <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.1.8/vue.min.js"></script>-->
-    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue@2.1.8/dist/vue.js"></script>
     <script src="static/component.js"></script>
     <script src="static/main.js"></script>
     <title>Train Query</title>
@@ -15,7 +15,7 @@
 <body>
     <div id="app">
         <train-query-header :progress="progress" :online_count="online_count" :active_count="active_count"></train-query-header>
-        <train-query-contents></train-query-contents>
+        <train-query-contents @package_query_parameter="package_query_parameter"></train-query-contents>
         <train-query-footer></train-query-footer>
     </div>
 </body>
