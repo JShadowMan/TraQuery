@@ -19,7 +19,7 @@ class TrainQuery(object):
 
         train_station.init(self.__async_loop)
 
-    async def query(self, from_station, to_station, date, is_student = False, *, result_handler = None):
+    async def query(self, from_station, to_station, date, is_student = False, *, result_handler = None, args = None):
         if not isinstance(date, (int, float)):
             raise TypeError('date must be unix time stamp, not %s' % type(date).__name__)
 

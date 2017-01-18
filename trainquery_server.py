@@ -4,12 +4,13 @@
 #
 import os
 import json
+import time
 import flask
 import logging
 import asyncio
 import aiohttp
 import flask_socketio
-from trainquery import train_station
+from trainquery import train_station, utils, train_query
 
 async_loop = asyncio.get_event_loop()
 train_station.init(async_loop)
@@ -46,6 +47,20 @@ def check_train_station(request):
             'key': request.get('key'),
             'station_code': None
         })
+
+def __emit_query_train_list_event(result):
+    server.emit('response.query', result)
+
+@server.on('request.train.list')
+def query_train_list(request):
+    from_station = request.get('from')
+    to_station = request.get('to')
+    train_date = request.get('date')
+    ts = request.get('ts')
+    query = train_query.TrainQuery()
+    train_ts = time.mktime(time.strptime(train_date, '%Y-%m-%d'))
+
+    utils.async_startup(async_loop, query.query(from_station, to_station, train_ts, result_handler = __emit_query_train_list_event))
 
 if __name__ == '__main__':
     server.run(application, debug = True)

@@ -104,7 +104,7 @@ Vue.component('train-query-parameter', {
                   '<input-group type="text" label="FROM" name="from_station" ref="from_station" label-class="input-group-label" input-class="input-group-input" @receive_input_data="parse_input_data"></input-group>' +
                   '<input-group type="text" label="TO" name="to_station" ref="to_station" label-class="input-group-label" input-class="input-group-input" @receive_input_data="parse_input_data"></input-group>' +
                   '<input-group type="date" label="DATE" name="train_date" ref="train_date" label-class="input-group-label" input-class="input-group-input" @receive_input_data="parse_input_data"></input-group>' +
-                  '<button class="train-query-submit widget-btn widget-btn-default" :class="button_style" :disabled="is_disable">Start</button>' +
+                  '<button class="train-query-submit widget-btn widget-btn-default" :class="button_style" :disabled="is_disable" @click.stop.prevent="query_train">Start</button>' +
               '</form></section>',
     props: [ 'from-station', 'to-station', 'train-date' ],
     computed: {
@@ -151,6 +151,9 @@ Vue.component('train-query-parameter', {
                         // update sub-component status
                         sub_component.input_status = 'error';
 
+                        // empty station code
+                        this.$emit('receive_input_true_data', response.key, '');
+
                         // show error message
                         console.log(response.message);
                     }
@@ -174,6 +177,18 @@ Vue.component('train-query-parameter', {
                     this.$emit('receive_input_true_data', data.name, '');
                     sub_component.input_status = 'error';
                 }
+            }
+        },
+        query_train: function() {
+            if (this.fromStation && this.toStation && this.trainDate) {
+                this.$root.socket.emit('request.train.list', {
+                    from: this.fromStation,
+                    to: this.to_station,
+                    date: this.trainDate,
+                    ts: (new Date()).getTime()
+                });
+            } else {
+                alert('Hey Guy, too young, too simple, sometimes native')
             }
         }
     }
