@@ -19,7 +19,7 @@ class TrainQuery(object):
 
         train_station.init(self.__async_loop)
 
-    async def query(self, from_station, to_station, date, is_student = False, *, result_handler = None, args = None):
+    async def query(self, from_station, to_station, date, is_student = False, *, result_handler = None, args = ()):
         if not isinstance(date, (int, float)):
             raise TypeError('date must be unix time stamp, not %s' % type(date).__name__)
 
@@ -49,9 +49,9 @@ class TrainQuery(object):
         if result_handler is None:
             return await self.__query_train(from_station, to_station, date, passenger_type)
         elif asyncio.iscoroutinefunction(result_handler):
-            await result_handler(await self.__query_train(from_station, to_station, date, passenger_type))
+            await result_handler(await self.__query_train(from_station, to_station, date, passenger_type), *args)
         elif callable(result_handler):
-            result_handler(await self.__query_train(from_station, to_station, date, passenger_type))
+            result_handler(await self.__query_train(from_station, to_station, date, passenger_type), *args)
         else:
             raise TypeError('result_handler must be callable')
 
