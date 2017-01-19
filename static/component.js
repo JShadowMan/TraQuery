@@ -183,7 +183,7 @@ Vue.component('train-query-parameter', {
             if (this.fromStation && this.toStation && this.trainDate) {
                 this.$root.socket.emit('request.train.list', {
                     from: this.fromStation,
-                    to: this.to_station,
+                    to: this.toStation,
                     date: this.trainDate,
                     ts: (new Date()).getTime()
                 });
@@ -191,6 +191,15 @@ Vue.component('train-query-parameter', {
                 alert('Hey Guy, too young, too simple, sometimes native')
             }
         }
+    },
+    created: function() {
+        this.$root.socket.on('response.train.list', function(message) {
+            console.log('response.train.list', message);
+        });
+
+        this.$root.socket.on('response.train.profile', function(message) {
+            console.log('response.train.profile', message);
+        });
     }
 });
 
