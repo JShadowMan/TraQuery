@@ -76,6 +76,17 @@ async def foreach_train(result, emit):
                 'count': len(result.get_trains_code())
             }
         ))
+        # emit response.train.list
+        emit(WS_Response_Data(
+            # event
+            'response.train.list',
+            # data
+            {
+                'status': True,
+                'message': 'succeed',
+                'list': result.get_trains_code()
+            }
+        ))
         # all train information
         for train_code in result.get_trains_code():
             selector = result.select(train_code)
@@ -102,7 +113,7 @@ async def foreach_train(result, emit):
 async def query_train_list(request, emit):
     emit(WS_Response_Data(
         # event
-        'response.train.list',
+        'response.train.query.progress',
         # data
         {
             'status': True,
@@ -130,7 +141,7 @@ async def query_train_list(request, emit):
     # ending
     emit(WS_Response_Data(
         # event
-        'response.query',
+        'response.train.query.progress',
         # data
         {
             'status': True,
@@ -178,7 +189,7 @@ async def web_socket_handler(request):
             except KeyError:
                 raise RuntimeWarning('the ws message must be have event name')
             except Exception:
-                raise RuntimeWarning('the ws message handler had error occurs')
+                emit(WS_Response_Data('error', 'the ws message handler had error occurs'))
     return ws
 
 if __name__ == '__main__':

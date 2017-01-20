@@ -79,6 +79,12 @@ async def fetch_json(loop, *args, **kwargs):
         await asyncio.sleep(1)
         logging.error('utils.fetch_json error occurs: 403 Forbidden')
         return await fetch_json(loop, *args, **kwargs)
+    except json.decoder.JSONDecodeError as e:
+        if 'BOM' in e.args[0]: # F**K
+            response = await fetch(loop, *args, **kwargs)
+            return json.loads(response, encoding = 'utf-8-sig')
+        else:
+            raise
     except Exception:
         raise
 
@@ -89,13 +95,8 @@ async def get_train_information(loop, from_station, to_station, date, passenger_
         ('leftTicketDTO.to_station', to_station),
         ('purpose_codes', passenger_type)
     ])  # -v- Order Params
-    try:
-        response = await fetch_json(loop, url = config.QUERY_TRAIN_URL, params = payload)
-    except json.decoder.JSONDecodeError as e:
-        if 'BOM' in e.args[0]: # F**K
-            response = await fetch_json(loop, url = config.QUERY_TRAIN_URL, params = payload, encoding = 'utf-8-sig')
-        else:
-            raise
+    response = await fetch_json(loop, url = config.QUERY_TRAIN_URL, params = payload)
+
 
     if 'status' in response and response['status'] is False:
         if 'c_url' in response:
@@ -105,11 +106,6 @@ async def get_train_information(loop, from_station, to_station, date, passenger_
             except Exception as e:
                 logging.error('utils.get_train_information error occurs {}'.format(e.args[0]))
                 raise
-            except json.decoder.JSONDecodeError as e:
-                if 'BOM' in e.args[0]:
-                    return await fetch_json(loop, url=config.QUERY_TRAIN_URL, params=payload, encoding='utf-8-sig')
-                else:
-                    raise
         else:
             raise RuntimeError('utils.get_train_information error occurs: unknown error')
     else:

@@ -14,14 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
         window.onbeforeunload = function() {
             socket.close();
         };
-        // close handler
-        socket.onclose = function() {
-            alert('the server is close connection')
-        };
-        // error handler
-        socket.onerror = function() {
-            alert('WebSocket error occurs')
-        };
         // global event pool
         socket.__proto__._global_event_handler = {};
         // add event handler method
@@ -39,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     socket.__proto__._global_event_handler[_event]($message)
                 }
             } catch (exception) {
-                console.log(exception)
+                console.log(exception, _event)
             }
         };
         // send message
@@ -61,7 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
             loading_progress: 0,
             online_count: 0,
             active_count: 0,
-            query_parameter: null
+            query_parameter: null,
+            event_bus: new Vue()
         },
         computed: {
             progress: function() {
@@ -78,20 +71,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         created: function() {
-            this.loading_progress = 15;
+            // change progress event
+            this.event_bus.$on('change-progress', function(progress, plus_base) {
+                try {
+                    if (progress < 0 && plus_base === true && this.loading_progress + progress < 0) {
+                        this.loading_progress = 0;
+                        return;
+                    }
+                    if (plus_base === true) {
+                        this.loading_progress += progress;
+                    } else {
+                        this.loading_progress = progress;
+                    }
+                } catch (exception) {
+                    console.log('on event_bus.change-progress error occurs', exception)
+                }
+            }.bind(this));
+            // close handler
+            socket.onclose = function() {
+                this.event_bus.$emit('error-occurs', 'socket', 'The Server is disconnection', 'notice');
+            }.bind(this);
+            // error handler
+            socket.onerror = function(error) {
+                this.event_bus.$emit('error-occurs', 'socket', 'The WebSocket error occurs:' + error.toString());
+            }.bind(this);
         },
         mounted: function() {
-            this.loading_progress = 30;
-
             // WebSocket event
             socket.on('response.server.status', function(message) {
                 vm.online_count = message.online_count;
                 vm.active_count = message.active_count;
-            });
-
-            // WebSocket event
-            socket.on('response.query', function(message) {
-                console.log(message)
             });
         }
     });

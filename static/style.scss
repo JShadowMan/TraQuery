@@ -95,129 +95,156 @@ header {
     .fade-enter-active, .fade-leave-active {
       @include prefix(transition, all .5s ease-in-out)
     }
-    .fade-enter, .fade-enter-to {
+    .fade-enter, .fade-leave-to {
+      transition-delay: .3s;
       opacity: 0;
     }
-    .fade-leave, .fade-leave-to {
+    .fade-leave, .fade-enter-to {
       opacity: 1;
     }
   }
 }
-.container {
-  display: flex;
-
+.train-query-contents {
   @at-root {
-    .train-query-parameter {
-      margin: 0 auto;
-      margin-bottom: 1rem;
-
-      div {
-        margin-right: 2rem;
-        display: inline-table;
-        vertical-align: middle;
-
-        label {
-          cursor: pointer;
-          display: table-cell;
-          white-space: nowrap;
-          padding: .5rem .75rem;
-          font-size: 1.5rem;
-          vertical-align: middle;
-          font-weight: normal;
-          line-height: 1;
-          color: #55595c;
-          text-align: center;
-          background-color: #eceeef;
-          border: 1px solid #ccc;
-          border-right: 0;
-          border-radius: .25rem 0 0 .25rem;
-        }
-
-        input {
-          cursor: text;
-          display: block;
-          width: 100%;
-          padding: .5rem .75rem;
-          font-size: 1.6rem;
-          line-height: 1.5;
-          color: #55595c;
-          background-color: #fff;
-          background-image: none;
-          border: 1px solid #ccc;
-          border-radius: .25rem;
-          transition: all .35s;
-
-          &:focus {
-            border-color: #66afe9;
-            outline: none;
-          }
-        }
-
-        label + input {
-          border-radius: 0 .25rem .25rem 0;
-        }
-      }
-
-      button {
-        padding: .5rem;
-        font-family: 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
-        font-style: italic;
-      }
-
-      .train-query-submit {
-        letter-spacing: 1px;
-      }
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       @at-root {
-        .widget-btn {
-          display: inline-block;
-          padding: .375rem 1rem;
-          font-size: 1.4rem;
-          font-weight: normal;
-          line-height: 1.5;
-          text-align: center;
-          white-space: nowrap;
-          vertical-align: middle;
-          cursor: pointer;
-          @include prefix(user-select, none);
-          border: 1px solid transparent;
-          border-radius: .25rem;
-          transition-property: background, border;
-          transition-duration: .35s;
+        .train-query-parameter form {
+          margin: 0 auto;
+          margin-bottom: 1rem;
 
-          &:focus, &:active:focus, &:hover {
-            text-decoration: none;
-            outline: thin dotted;
-            outline: 5px auto -webkit-focus-ring-color;
-            outline-offset: -2px;
+          div {
+            margin-right: 2rem;
+            display: inline-table;
+            vertical-align: middle;
+
+            label {
+              cursor: pointer;
+              display: table-cell;
+              white-space: nowrap;
+              padding: .5rem .75rem;
+              font-size: 1.5rem;
+              vertical-align: middle;
+              font-weight: normal;
+              line-height: 1;
+              color: #55595c;
+              text-align: center;
+              background-color: #eceeef;
+              border: 1px solid #ccc;
+              border-right: 0;
+              border-radius: .25rem 0 0 .25rem;
+            }
+
+            input {
+              cursor: text;
+              display: block;
+              width: 100%;
+              padding: .5rem .75rem;
+              font-size: 1.6rem;
+              line-height: 1.5;
+              color: #55595c;
+              background-color: #fff;
+              background-image: none;
+              border: 1px solid #ccc;
+              border-radius: .25rem;
+              transition: all .35s;
+
+              &:focus {
+                border-color: #66afe9;
+                outline: none;
+              }
+            }
+
+            label + input {
+              border-radius: 0 .25rem .25rem 0;
+            }
           }
-          &:active {
-            background-image: none;
-            outline: 0;
+
+          button {
+            padding: .5rem;
+            font-family: 'Consolas', 'Menlo', 'Deja Vu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
+            font-style: italic;
           }
-          &:disabled, .widget-btn.disabled {
-            cursor: not-allowed;
-            opacity: .65;
+
+          .train-query-submit {
+            letter-spacing: 1px;
+          }
+
+          @at-root {
+            .widget-btn {
+              display: inline-block;
+              padding: .375rem 1rem;
+              font-size: 1.4rem;
+              font-weight: normal;
+              line-height: 1.5;
+              text-align: center;
+              white-space: nowrap;
+              vertical-align: middle;
+              cursor: pointer;
+              @include prefix(user-select, none);
+              border: 1px solid transparent;
+              border-radius: .25rem;
+              transition-property: background, border;
+              transition-duration: .35s;
+
+              &:focus, &:active:focus, &:hover {
+                text-decoration: none;
+                outline: thin dotted;
+                outline: 5px auto -webkit-focus-ring-color;
+                outline-offset: -2px;
+              }
+              &:active {
+                background-image: none;
+                outline: 0;
+              }
+              &:disabled, .widget-btn.disabled {
+                cursor: not-allowed;
+                opacity: .65;
+              }
+            }
+
+            .widget-btn-default {
+              color: #333;
+              background-color: #fff;
+              border-color: #ccc;
+
+              &:hover {
+                color: #333;
+                background-color: #e6e6e6;
+                border-color: #adadad;
+              }
+            }
           }
         }
+        .input-group-label {
+          &::after {
+            content: ': ';
+          }
+        }
+      }
+      @at-root {
+        .train-list-container {
+          font-size: 1.6rem;
+        }
+        ul {
+          list-style: none;
 
-        .widget-btn-default {
-          color: #333;
-          background-color: #fff;
-          border-color: #ccc;
-
-          &:hover {
-            color: #333;
-            background-color: #e6e6e6;
-            border-color: #adadad;
+          li {
+            list-style: none;
+            display: inline-block;
+            margin: 0 1rem 0 0;
+            overflow: hidden;
           }
         }
       }
     }
-    .input-group-label {
-      &::after {
-        content: ': ';
-      }
+    .error-message {
+      text-align: center;
+      color: #F00;
+      font-size: 1.8rem;
     }
   }
 }

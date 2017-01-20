@@ -100,7 +100,7 @@ Vue.component('input-group', {
 });
 
 Vue.component('train-query-parameter', {
-    template: '<section class="train-query-parameter"><form>' +
+    template: '<section class="train-query-parameter container"><form>' +
                   '<input-group type="text" label="FROM" name="from_station" ref="from_station" label-class="input-group-label" input-class="input-group-input" @receive_input_data="parse_input_data"></input-group>' +
                   '<input-group type="text" label="TO" name="to_station" ref="to_station" label-class="input-group-label" input-class="input-group-input" @receive_input_data="parse_input_data"></input-group>' +
                   '<input-group type="date" label="DATE" name="train_date" ref="train_date" label-class="input-group-label" input-class="input-group-input" @receive_input_data="parse_input_data"></input-group>' +
@@ -146,16 +146,20 @@ Vue.component('train-query-parameter', {
                         sub_component.input_status = 'success';
                         // emit parent-component event
                         this.$emit('receive_input_true_data', response.key, response.station_code);
+                        // change progress
+                        this.$root.event_bus.$emit('change-progress', 10, true);
+                        // reset error
+                        this.$root.event_bus.$emit('reset-error', response.key);
                     // station non-exists
                     } else {
                         // update sub-component status
                         sub_component.input_status = 'error';
-
+                        // change progress
+                        this.$root.event_bus.$emit('change-progress', -10, true);
                         // empty station code
                         this.$emit('receive_input_true_data', response.key, '');
-
                         // show error message
-                        console.log(response.message);
+                        this.$root.event_bus.$emit('error-occurs', response.key, response.message, 'warning');
                     }
                 }.bind(this));
             // is date data
@@ -167,20 +171,31 @@ Vue.component('train-query-parameter', {
                 var select_date_timestamp = select_date.getTime() / 1000;
                 var current_date_timestamp = current_date.getTime() / 1000;
 
-                if (current_date_timestamp - select_date_timestamp < 86400) {
+                if ((current_date_timestamp - select_date_timestamp < 86400)
+                    || (select_date_timestamp > current_date_timestamp)) {
+                    // change input status
                     sub_component.input_status = 'success';
+                    // update train data
                     this.$emit('receive_input_true_data', 'train_date', data.value);
-                } else if (select_date_timestamp > current_date_timestamp) {
-                    sub_component.input_status = 'success';
-                    this.$emit('receive_input_true_data', data.name, data.value);
+                    // change progress
+                    this.$root.event_bus.$emit('change-progress', 10, true);
                 } else {
+                    // update train date to empty
                     this.$emit('receive_input_true_data', data.name, '');
+                    // update input status
                     sub_component.input_status = 'error';
+                    // change progress
+                    this.$root.event_bus.$emit('change-progress', -10, true);
                 }
             }
         },
         query_train: function() {
             if (this.fromStation && this.toStation && this.trainDate) {
+                // change progress
+                this.$root.event_bus.$emit('change-progress', 3, true);
+                // change progress
+                this.$root.event_bus.$emit('trigger-query-animation');
+                // WebSocket send request
                 this.$root.socket.emit('request.train.list', {
                     from: this.fromStation,
                     to: this.toStation,
@@ -191,27 +206,91 @@ Vue.component('train-query-parameter', {
                 alert('Hey Guy, too young, too simple, sometimes native')
             }
         }
-    },
-    created: function() {
-        this.$root.socket.on('response.train.list', function(message) {
-            console.log('response.train.list', message);
-        });
-
-        this.$root.socket.on('response.train.profile', function(message) {
-            console.log('response.train.profile', message);
-        });
     }
 });
 
+Vue.component('error-info', {
+    template: '<transition name="fade"><section class="error-message" :class="error_class" v-if="error !== \'\'"><p>{{ error }}</p></section></transition>',
+    props: ['error', 'level'],
+    computed: {
+        'error_class': function() {
+            return 'error-level-' + (this.level ? this.level : 'default');
+        }
+    }
+});
+
+Vue.component('query-progress-animation', {
+    template: '<transition name="query-animation"><div v-if="show"></div></transition>',
+    props: ['show']
+});
+
+Vue.component('train-list', {
+    template: '<transition name="fade">\
+                   <section class="container train-list-container" v-if="count">\
+                       <p class="train-count">Total {{ count }} {{ train_word }}</p>\
+                       <ul class="train-list">\
+                           <li v-for="train_code in list" class="train-list-item" :id="\'_\' + train_code">{{ train_code }}</li>\
+                       </ul>\
+                   </section>\
+               </transition>',
+    props: {
+        count: {
+            required: true,
+            type: Number
+        },
+        list: {
+            required: true,
+            type: Array
+        }
+    },
+    computed: {
+        train_word: function() {
+            return 'Train' + (this.count == 1 ? '' : 's');
+        }
+    }
+});
+
+Vue.component('train-profile', {
+    template: '<section>\
+                   <ul class="train-profile-container">\
+                       <li class="train-profile-code">{{ profile.train_code }}</li>\
+                       <li class="train-profile-code">{{ profile.start_station[0] }}</li>\
+                       <li class="train-profile-code">{{ profile.end_station[0] }}</li>\
+                       <li class="train-profile-code">{{ profile.start_time }}</li>\
+                       <li class="train-profile-code">{{ profile.arrive_time }}</li>\
+                       <li class="train-profile-code">{{ profile.total_time }}</li>\
+                   </ul>\
+               </section>',
+    props: [ 'profile' ]
+});
+
+Vue.component('train-query-result', {
+    template: '<transition-group name="down-fade" tag="section" class="container">\
+                      <train-profile v-for="train in trains" :profile="train" :key="train.train_code"></train-profile>\
+               </transition-group>',
+    props: ['trains']
+});
+
 Vue.component('train-query-contents', {
-    template: '<section class="container">\
+    template: '<section class="train-query-contents">\
                    <train-query-parameter :from-station="from_station" :to-station="to_station" :train-date="train_date" @receive_input_true_data="receive_true_data"></train-query-parameter>\
+                   <error-info :error="error_message" :level="error_level"></error-info>\
+                   <query-progress-animation :show="show_progress"></query-progress-animation>\
+                   <train-list :count="response_train_count" :list="response_train_list"></train-list>\
+                   <train-query-result :trains="response_train_profile"></train-query-result>\
                </section>',
     data: function() {
         return {
             from_station: '',
             to_station: '',
-            train_date: ''
+            train_date: '',
+            error_message: '',
+            error_level: '',
+            show_progress: false,
+            error_trigger: null,
+            response_train_count: 0,
+            response_train_list: [],
+            response_train_profile: []
         }
     },
     methods: {
@@ -226,6 +305,56 @@ Vue.component('train-query-contents', {
                 this.$emit('package_query_parameter', this.from_station, this.to_station, this.train_date);
             }
         }
+    },
+    created: function() {
+        // receive train count
+        this.$root.socket.on('response.train.count', function(message) {
+            this.response_train_count = message.count;
+        }.bind(this));
+        // receive train list
+        this.$root.socket.on('response.train.list', function(message) {
+            this.response_train_list = message.list;
+        }.bind(this));
+        // receive train progress
+        this.$root.socket.on('response.train.query.progress', function(message) {
+            if (message.status === false) {
+                // reset progress
+                this.$root.event_bus.$emit('change-progress', 0);
+                // trigger error
+                this.$root.event_bus.$emit('error-occurs', 'socket', message.message);
+            }
+            if (message.progress == 100) {
+                if (this.response_train_profile.length == 0) {
+                    this.$root.event_bus.$emit('error-occurs', 'socket', 'Empty Trains')
+                }
+                setTimeout(function() {
+                    this.$root.event_bus.$emit('change-progress', 100);
+                }.bind(this), 300);
+            } else if (message.progress == 0) {
+                this.$root.event_bus.$emit('change-progress', 2, true);
+            }
+        }.bind(this));
+        // receive each train profile
+        this.$root.socket.on('response.train.profile', function(message) {
+            this.response_train_profile.push(message)
+        }.bind(this));
+        // receive error message
+        this.$root.event_bus.$on('error-occurs', function(trigger, error, error_level) {
+            this.error_trigger = trigger;
+            this.error_message = error;
+        }.bind(this));
+        // reset error
+        this.$root.event_bus.$on('reset-error', function(trigger) {
+            if (trigger && trigger === this.error_trigger) {
+                this.error_message = '';
+                this.error_level = '';
+                this.error_trigger = '';
+            }
+        }.bind(this));
+        // start query animation
+        this.$root.event_bus.$on('trigger-query-animation', function() {
+            this.show_progress = !this.show_progress;
+        }.bind(this));
     }
 });
 
