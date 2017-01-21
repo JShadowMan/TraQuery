@@ -110,6 +110,7 @@ header {
       display: flex;
       align-items: center;
       justify-content: center;
+      margin: 0 auto;
 
       @at-root {
         .train-query-parameter form {
@@ -240,6 +241,22 @@ header {
           }
         }
       }
+      table.train-query-result-container {
+        width: 50%;
+        text-align: center;
+        font-size: 1.6rem;
+        border-collapse: collapse;
+        border-spacing: 0;
+
+        tr {
+          line-height: 3;
+          border-bottom: 1px dashed rgba(0, 0, 0, .08);
+
+          &:nth-child(2n) {
+            background: #ededed;
+          }
+        }
+      }
     }
     .error-message {
       text-align: center;
@@ -247,4 +264,7 @@ header {
       font-size: 1.8rem;
     }
   }
+}
+footer {
+  margin-bottom: 3rem;
 }

@@ -101,7 +101,8 @@ async def foreach_train(result, emit):
                     'arrive_time': selector.arrive_time,
                     'total_time': selector.total_time,
                     'start_station': selector.start_station,
-                    'end_station': selector.end_station
+                    'end_station': selector.end_station,
+                    'available': selector.purchase_flag
                 }
             ))
             # try:

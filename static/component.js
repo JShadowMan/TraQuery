@@ -195,6 +195,8 @@ Vue.component('train-query-parameter', {
                 this.$root.event_bus.$emit('change-progress', 3, true);
                 // change progress
                 this.$root.event_bus.$emit('trigger-query-animation');
+                // reset response
+                this.$root.event_bus.$emit('reset-response');
                 // WebSocket send request
                 this.$root.socket.emit('request.train.list', {
                     from: this.fromStation,
@@ -220,15 +222,17 @@ Vue.component('error-info', {
 });
 
 Vue.component('query-progress-animation', {
-    template: '<transition name="query-animation"><div v-if="show"></div></transition>',
+    template: '<transition name="query-animation"><section v-if="show" class="container"></section></transition>',
     props: ['show']
 });
 
 Vue.component('train-list', {
+    // here hidden train code list
+    // <ul class="train-list" v-if="false">
     template: '<transition name="fade">\
                    <section class="container train-list-container" v-if="count">\
                        <p class="train-count">Total {{ count }} {{ train_word }}</p>\
-                       <ul class="train-list">\
+                       <ul class="train-list" v-if="false">\
                            <li v-for="train_code in list" class="train-list-item" :id="\'_\' + train_code">{{ train_code }}</li>\
                        </ul>\
                    </section>\
@@ -251,23 +255,37 @@ Vue.component('train-list', {
 });
 
 Vue.component('train-profile', {
-    template: '<section>\
-                   <ul class="train-profile-container">\
-                       <li class="train-profile-code">{{ profile.train_code }}</li>\
-                       <li class="train-profile-code">{{ profile.start_station[0] }}</li>\
-                       <li class="train-profile-code">{{ profile.end_station[0] }}</li>\
-                       <li class="train-profile-code">{{ profile.start_time }}</li>\
-                       <li class="train-profile-code">{{ profile.arrive_time }}</li>\
-                       <li class="train-profile-code">{{ profile.total_time }}</li>\
-                   </ul>\
-               </section>',
-    props: [ 'profile' ]
+    template: '<tr>\
+                   <td class="train-profile-item">{{ profile.train_code }}</td>\
+                   <td class="train-profile-item">{{ profile.start_station[0] }}</td>\
+                   <td class="train-profile-item">{{ profile.end_station[0] }}</td>\
+                   <td class="train-profile-item">{{ profile.start_time }}</td>\
+                   <td class="train-profile-item">{{ profile.arrive_time }}</td>\
+                   <td class="train-profile-item">{{ profile.total_time }}</td>\
+                   <td v-if="status_tag === \'button\'" class="train-profile-item"><button class="widget-btn widget-btn-default" :class="{ \'widget-btn-disabled\': profile.available }" :disabled="profile.available" title="Already available and does not need to query">Check</button></td>\
+                   <td v-else class="train-profile-item">{{ profile.train_status }}</td>\
+               </tr>',
+    props: [ 'profile', 'status_tag' ]
 });
 
 Vue.component('train-query-result', {
-    template: '<transition-group name="down-fade" tag="section" class="container">\
-                      <train-profile v-for="train in trains" :profile="train" :key="train.train_code"></train-profile>\
-               </transition-group>',
+    template: '<section class="container"><transition-group name="down-fade" tag="table" class="train-query-result-container">\
+                      <train-profile v-if="trains.length" :profile="train_title" key="train_table_title" :status_tag="\'text\'"></train-profile>\
+                      <train-profile v-for="train in trains" :profile="train" :key="train.train_code" :status_tag="\'button\'"></train-profile>\
+               </transition-group></section>',
+    data: function() {
+        return {
+            train_title: {
+                train_code: 'Train Code',
+                start_station: [ 'Start Station' ],
+                end_station: [ 'End Station' ],
+                start_time: 'Start Time',
+                arrive_time: 'Arrive Time',
+                total_time: 'Total Time',
+                train_status: 'Status'
+            }
+        }
+    },
     props: ['trains']
 });
 
@@ -323,13 +341,17 @@ Vue.component('train-query-contents', {
                 // trigger error
                 this.$root.event_bus.$emit('error-occurs', 'socket', message.message);
             }
-            if (message.progress == 100) {
+            if (message.progress === 100) {
                 if (this.response_train_profile.length == 0) {
                     this.$root.event_bus.$emit('error-occurs', 'socket', 'Empty Trains')
                 }
+
+                // If increase to 100, then the element is gone directly
+                this.$root.event_bus.$emit('change-progress', 99.999);
+                // after increase to 100
                 setTimeout(function() {
                     this.$root.event_bus.$emit('change-progress', 100);
-                }.bind(this), 300);
+                }.bind(this), 1000);
             } else if (message.progress == 0) {
                 this.$root.event_bus.$emit('change-progress', 2, true);
             }
@@ -354,6 +376,12 @@ Vue.component('train-query-contents', {
         // start query animation
         this.$root.event_bus.$on('trigger-query-animation', function() {
             this.show_progress = !this.show_progress;
+        }.bind(this));
+        // reset response
+        this.$root.event_bus.$on('reset-response', function() {
+            this.response_train_profile = [];
+            this.response_train_count = 0;
+            this.response_train_list = [];
         }.bind(this));
     }
 });

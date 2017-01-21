@@ -72,6 +72,7 @@ async def clean():
 #         logging.error('utils.fetch error occurs: {}'.format(e.args[0]))
 
 async def fetch_json(loop, *args, **kwargs):
+    response = ''
     try:
         response = await fetch(loop, *args, **kwargs)
         return json.loads(response)
@@ -81,7 +82,6 @@ async def fetch_json(loop, *args, **kwargs):
         return await fetch_json(loop, *args, **kwargs)
     except json.decoder.JSONDecodeError as e:
         if 'BOM' in e.args[0]: # F**K
-            response = await fetch(loop, *args, **kwargs)
             return json.loads(response, encoding = 'utf-8-sig')
         else:
             raise
